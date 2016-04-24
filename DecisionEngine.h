@@ -22,6 +22,7 @@ enum class Event : unsigned int {
   Penalized
 };
 
+/** Overloading std::hash for all enums. */
 namespace std {
   template<class E>
   struct hash : public __hash_base<size_t, E>
@@ -158,16 +159,33 @@ class DecisionEngine {
       for (auto& entry : active_rules) {
         const Decision& decision = std::get<1>(entry);
         float utility = static_cast<float>(decision.getUtility());
+#ifdef NDEBUG
+        std::cout << "  Computing Decision '" << decision.getName() << "', utility: " << utility << "\n";
+#endif
         // Because active_rules is sorted and because for any score s holds
         // 0 <= s <= 1, we are guaranteed not to find
         if (utility < highest_score || utility == 0) {
+#ifdef NDEBUG
+          std::cout << "    Ignoring this one: ";
+          if (utility == 0) std::cout << "utility = 0\n";
+          else std::cout << "utility < highest\n";
+#endif
           break;
         }
         float score = decision.computeScore();
+#ifdef NDEBUG
+        std::cout << "    score: " << score << "\n";
+#endif
         if (score > highest_score) {
+#ifdef NDEBUG
+          std::cout << "    High score!\n";
+#endif
           highest_score = score;
           best_decision = decision;
           if (score == utility) {
+#ifdef NDEBUG
+            std::cout << "    Can't do better than this. Quitting.\n";
+#endif
             break;
           }
         }
@@ -175,6 +193,7 @@ class DecisionEngine {
       return best_decision;
     }
 
+    /** Return a list of all Decisions which the Engine could use. */
     std::vector<Decision> getActiveDecisions() {
       std::vector<Decision> actives;
       actives.reserve(active_rules.size());

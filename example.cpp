@@ -1,6 +1,8 @@
 #include <iostream>
 #include <random>
 #include <chrono>
+
+#define NDEBUG
 #include "DecisionEngine.h"
 
 class Test {
