@@ -28,13 +28,17 @@ enum class UtilityScore : int {
  */
 class Decision {
   public:
-    Decision(const std::string& name, const std::string& description, UtilityScore utility, std::vector<Consideration> considerations, const Action& action) 
+    Decision(const std::string& name, const std::string& description, UtilityScore utility, std::vector<Consideration> considerations, const Action& action)
       : name(name), 
       description(description),
       utility(utility),
       considerations(considerations),
       action(action)
     {}
+
+    Decision() = default;
+    Decision(const Decision& other) = default;
+    Decision& operator=(const Decision& other) = default;
 
     /** Calculate the 'usefulness' of a Decision.
      *
@@ -77,15 +81,3 @@ class Decision {
     std::vector<Consideration> considerations;
     Action action;
 };
-
-inline bool operator<(const Decision& x, const Decision& y) {
-  return x.getUtility() < y.getUtility();
-}
-
-inline bool operator<(const Decision& x, UtilityScore y) {
-  return x.getUtility() < y;
-}
-
-inline bool operator<(UtilityScore x, const Decision& y) {
-  return x < y.getUtility();
-}

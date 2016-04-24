@@ -15,6 +15,10 @@ class Consideration {
       : utilityFunction(utilityFunction), transform(transform), min(min), max(max)
     {}
 
+    Consideration() = default;
+    Consideration(const Consideration& other) = default;
+    Consideration& operator=(const Consideration& other) = default;
+
     /** Computes the utility score of this Consideration.  */
     inline float computeScore() const
     {
@@ -22,8 +26,8 @@ class Consideration {
     }
 
   private:
-    const std::function<float()>& utilityFunction;
-    const Transform::Transform transform;
-    const float min;
-    const float max;
+    std::function<float()> utilityFunction;
+    Transform::Transform transform;
+    float min;
+    float max;
 };

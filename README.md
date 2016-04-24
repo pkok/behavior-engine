@@ -6,6 +6,8 @@ At first this engine looks radically different from classical behavior specifica
 
 This implementation is based on the talk, but does not aim to reproduce it exactly.  The application of this implementation is currently targeted at [RoboCup Standard Platform League][robocup-spl] soccer playing robots, especially targeted on the usability for the [Dutch Nao Team][dnt].
 
+For an example how to use this code, please see `example.cpp`.
+
 [centaur-video]: http://www.gdcvault.com/play/1021848/Building-a-Better-Centaur-AI "Building a Better Centaur: AI at Massive Scale"
 [XABSL]: http://www.xabsl.de/ "The Extensible Agent Behavior Specification Language"
 [robocup-spl]: http://www.informatik.uni-bremen.de/spl/bin/view/Website/WebHome "RoboCup Standard Platform League"

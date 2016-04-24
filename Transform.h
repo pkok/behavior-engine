@@ -48,7 +48,7 @@ namespace Transform {
 
   Transform Power(float power) {
     return Transform([power](float value, float min, float max) {
-        return scale(std::pow(value, power), std::pow(base, min), std::pow(base, max));
+        return scale(std::pow(value, power), std::pow(min, power), std::pow(max, power));
     });
   }
 }

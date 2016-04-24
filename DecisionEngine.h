@@ -1,9 +1,11 @@
 #pragma once
 
 #include <algorithm>
+#include <exception>
+#include <functional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <string>
 #include <vector>
 
 #include "Consideration.h"
@@ -15,7 +17,23 @@
 #define actions [this]()
 
 // TODO: Fill this with your application-specific list of events.
-enum class Event;
+enum class Event : unsigned int {
+  Always,
+  Penalized
+};
+
+namespace std {
+  template<class E>
+  struct hash : public __hash_base<size_t, E>
+  {
+  public:
+      size_t operator()(E __val) const noexcept {
+        return static_cast<size_t>(__val);
+      }
+  private:
+      using sfinae = typename std::enable_if<std::is_enum<E>::value, E>::type;
+  };
+}
 
 using considerations = std::vector<Consideration>;
 using events = std::vector<Event>;
@@ -31,6 +49,10 @@ class description : public std::string {
 };
 
 
+class DecisionException : public std::runtime_error {
+  public:
+    using std::runtime_error::runtime_error;
+};
 
 /** Lazily selects a Decision with the highest score from an activated subset.
  *
@@ -55,9 +77,9 @@ class DecisionEngine {
         considerations c,
         const Action& a)
     {
-      for (const auto& event : e) {
+      for (auto event : e) {
         rules[event].emplace_back(n, d, u, c, a);
-        updated_events.insert(e);
+        updated_events.insert(event);
       }
     }
 
@@ -72,10 +94,12 @@ class DecisionEngine {
       if (!updated_events.empty()) {
         sort_decisions();
       }
-      for (const auto& decision : rules[e]) {
-        active_rules.emplace_back(e, decision);
+      if (active_events.find(e) == active_events.end()) {
+        for (const auto& decision : rules[e]) {
+          active_rules.emplace_back(e, decision);
+        }
+        active_events.insert(e);
       }
-      active_events.insert(e);
     }
 
     /** Clear all known behaviors.  
@@ -106,7 +130,7 @@ class DecisionEngine {
           [e](const Rule& entry) {
             return std::get<0>(entry) == e;
           });
-      auto& it = std::get<0>(active_events.insert(e));
+      const auto& it = std::get<0>(active_events.insert(e));
       active_events.erase(it);
     }
     
@@ -120,17 +144,21 @@ class DecisionEngine {
      * It should run as lazy as possible.  There is probably some
      * optimization to squeeze out of here.
      */
-    const Decision& getBestDecision() {
+    Decision getBestDecision() {
       if (!updated_events.empty()) {
         sort_decisions();
       }
-      float highest_score = 0.f;
-      Decision& best_decision = std::get<1>(active_rules.front());
+      if (active_rules.empty()) {
+        throw DecisionException("Empty active rule set");
+      }
+      float highest_score = -1.f;
+      const Decision& temp = std::get<1>(active_rules.front());
+      Decision best_decision = temp;
 
       for (auto& entry : active_rules) {
         const Decision& decision = std::get<1>(entry);
         float utility = static_cast<float>(decision.getUtility());
-        // Because active_rules is sorted and because for any score s holds 
+        // Because active_rules is sorted and because for any score s holds
         // 0 <= s <= 1, we are guaranteed not to find
         if (utility < highest_score || utility == 0) {
           break;
@@ -139,9 +167,21 @@ class DecisionEngine {
         if (score > highest_score) {
           highest_score = score;
           best_decision = decision;
+          if (score == utility) {
+            break;
+          }
         }
       }
       return best_decision;
+    }
+
+    std::vector<Decision> getActiveDecisions() {
+      std::vector<Decision> actives;
+      actives.reserve(active_rules.size());
+      for (auto& rule : active_rules) {
+        actives.push_back(std::get<1>(rule));
+      }
+      return actives;
     }
 
   protected:
@@ -159,11 +199,14 @@ class DecisionEngine {
      */
     void sort_decisions() {
       for (auto& event : updated_events) {
-        std::stable_sort(rules[event].begin(), rules[event].end());
+        std::stable_sort(rules[event].begin(), rules[event].end(),
+            [](const Decision& x, const Decision& y) {
+                return x.getUtility() > y.getUtility();
+            });
         if (active_events.find(event) != active_events.end()) {
-          std::stable_sort(active_events.begin(), active_events.end(),
+          std::stable_sort(active_rules.begin(), active_rules.end(),
               [](const Rule& x, const Rule& y) { 
-                return std::get<1>(x) < std::get<1>(y);
+                  return std::get<1>(x).getUtility() > std::get<1>(y).getUtility();
               });
         }
       }
