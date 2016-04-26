@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <exception>
 #include <functional>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,7 +15,7 @@
 
 #define consideration(MIN, MAX, TRANSFORM, FN) \
   Consideration([this]() FN, TRANSFORM, MIN, MAX)
-#define actions [this]()
+#define actions [this](const Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.
 enum class Event : unsigned int {
@@ -29,7 +30,7 @@ namespace std {
   {
   public:
       size_t operator()(E __val) const noexcept {
-        return static_cast<size_t>(__val);
+        return static_cast<typename std::underlying_type<E>::type>(__val);
       }
   private:
       using sfinae = typename std::enable_if<std::is_enum<E>::value, E>::type;
@@ -100,6 +101,7 @@ class DecisionEngine {
           active_rules.emplace_back(e, decision);
         }
         active_events.insert(e);
+        sort_active_decisions();
       }
     }
 
@@ -152,9 +154,8 @@ class DecisionEngine {
       if (active_rules.empty()) {
         throw DecisionException("Empty active rule set");
       }
-      float highest_score = -1.f;
-      const Decision& temp = std::get<1>(active_rules.front());
-      Decision best_decision = temp;
+      float highest_score = -1.f * std::numeric_limits<float>::lowest();
+      Decision best_decision;
 
       for (auto& entry : active_rules) {
         const Decision& decision = std::get<1>(entry);
@@ -217,18 +218,27 @@ class DecisionEngine {
      * invocation of sort_decisions().
      */
     void sort_decisions() {
+      bool do_sort_active_decisions = false;
       for (auto& event : updated_events) {
         std::stable_sort(rules[event].begin(), rules[event].end(),
             [](const Decision& x, const Decision& y) {
                 return x.getUtility() > y.getUtility();
             });
-        if (active_events.find(event) != active_events.end()) {
-          std::stable_sort(active_rules.begin(), active_rules.end(),
-              [](const Rule& x, const Rule& y) { 
-                  return std::get<1>(x).getUtility() > std::get<1>(y).getUtility();
-              });
+        if (not do_sort_active_decisions && active_events.find(event) != active_events.end()) {
+          do_sort_active_decisions = true;
+        }
+        if (do_sort_active_decisions) {
+          sort_active_decisions();
         }
       }
       updated_events.clear();
+    }
+
+    /** Sorts active decisions based on their UtilityScore. */
+    void sort_active_decisions() {
+      std::stable_sort(active_rules.begin(), active_rules.end(),
+          [](const Rule& x, const Rule& y) {
+              return std::get<1>(x).getUtility() > std::get<1>(y).getUtility();
+          });
     }
 };

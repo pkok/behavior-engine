@@ -5,7 +5,8 @@
 #include <vector>
 #include "Consideration.h"
 
-using Action = std::function<void()>;
+class Decision;
+using Action = std::function<void(const Decision&)>;
 
 /**/
 enum class UtilityScore : int {
@@ -72,7 +73,7 @@ class Decision {
     const Action& getAction() const { return action; }
 
     /** Execute the Action associated with this Decision. */
-    void execute() const { action(); }
+    void execute() const { action(*this); }
 
   private:
     std::string name;

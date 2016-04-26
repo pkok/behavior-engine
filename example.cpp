@@ -69,7 +69,7 @@ Test::Test() {
       },
 
       actions {
-          report("Decision 2");
+          report(theDecision.getName());
       }
   );
 
