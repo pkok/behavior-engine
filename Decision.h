@@ -6,7 +6,7 @@
 #include "Consideration.h"
 
 class Decision;
-using Action = std::function<void(const Decision&)>;
+using Action = std::function<void(Decision&)>;
 
 /**/
 enum class UtilityScore : int {
@@ -69,11 +69,10 @@ class Decision {
     const std::string& getName() const { return name; }
     const std::string& getDescription() const { return description; }
     UtilityScore getUtility() const { return utility; }
-    void setUtility(UtilityScore u) { utility = u; }
     const Action& getAction() const { return action; }
 
     /** Execute the Action associated with this Decision. */
-    void execute() const { action(*this); }
+    void execute() { action(*this); }
 
   private:
     std::string name;

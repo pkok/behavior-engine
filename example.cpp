@@ -5,14 +5,13 @@
 #define NDEBUG
 #include "DecisionEngine.h"
 
-class Test {
+class Test : public DecisionEngine{
   public:
     Test();
     float getRandom();
     void report(const std::string& msg);
-    Decision next() { return decider.getBestDecision(); }
     void showActives() {
-      for (const auto& decision : decider.getActiveDecisions()) {
+      for (const auto& decision : getActiveDecisions()) {
         std::cout << "- '"
         << decision.getName()
         << "' ("
@@ -21,7 +20,6 @@ class Test {
       }
     }
 
-    DecisionEngine decider;
     std::mt19937 generator;
     std::uniform_real_distribution<float> distribution;
 };
@@ -35,11 +33,11 @@ void Test::report(const std::string& msg) {
   std::cout << msg << std::endl;
 }
 
-Test::Test() {
+Test::Test() : DecisionEngine() {
   auto t = std::chrono::system_clock::now();
   generator.seed(static_cast<unsigned int>(t.time_since_epoch().count()));
 
-  decider.addDecision(
+  addDecision(
     name("First decision"),
     description("Some long text"),
     UtilityScore::MostUseful,
@@ -56,7 +54,7 @@ Test::Test() {
     }
   );
 
-  decider.addDecision(
+  addDecision(
       name("Another decision"),
       description("Look, a story"),
       UtilityScore::VeryUseful,
@@ -73,7 +71,7 @@ Test::Test() {
       }
   );
 
-  decider.addDecision(
+  addDecision(
     name("Ignored decision"),
     description("Some more text"),
     UtilityScore::Ignore,
@@ -90,7 +88,7 @@ Test::Test() {
     }
   );
 
-  decider.raiseEvent(Event::Always);
+  raiseEvent(Event::Always);
 }
 
 int main(int, char**) {
@@ -98,7 +96,8 @@ int main(int, char**) {
   for (unsigned int i = 0; i < 5; ++i) {
     std::cout << "Round " << i << std::endl;
     t.showActives();
-    Decision d = t.next();
+    Decision& d = t.getBestDecision();
+    d.execute();
     std::cout << "Choice: '" << d.getName() << "'\n\n";
   }
 }

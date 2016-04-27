@@ -13,9 +13,13 @@
 #include "Decision.h"
 #include "Transform.h"
 
+#ifdef NDEBUG
+#include <iostream>
+#endif
+
 #define consideration(MIN, MAX, TRANSFORM, FN) \
   Consideration([this]() FN, TRANSFORM, MIN, MAX)
-#define actions [this](const Decision& theDecision)
+#define actions [this](Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.
 enum class Event : unsigned int {
@@ -97,8 +101,8 @@ class DecisionEngine {
         sort_decisions();
       }
       if (active_events.find(e) == active_events.end()) {
-        for (const auto& decision : rules[e]) {
-          active_rules.emplace_back(e, decision);
+        for (auto& decision : rules[e]) {
+          active_rules.emplace_back(e, std::reference_wrapper<Decision>(decision));
         }
         active_events.insert(e);
         sort_active_decisions();
@@ -147,18 +151,18 @@ class DecisionEngine {
      * It should run as lazy as possible.  There is probably some
      * optimization to squeeze out of here.
      */
-    Decision getBestDecision() {
+    Decision& getBestDecision() {
       if (!updated_events.empty()) {
         sort_decisions();
       }
       if (active_rules.empty()) {
         throw DecisionException("Empty active rule set");
       }
-      float highest_score = -1.f * std::numeric_limits<float>::lowest();
-      Decision best_decision;
+      float highest_score = std::numeric_limits<float>::lowest();
+      size_t best_index = 0;
 
-      for (auto& entry : active_rules) {
-        const Decision& decision = std::get<1>(entry);
+      for (size_t i = 0; i < active_rules.size(); ++i) {
+        const Decision& decision = std::get<1>(active_rules[i]);
         float utility = static_cast<float>(decision.getUtility());
 #ifdef NDEBUG
         std::cout << "  Computing Decision '" << decision.getName() << "', utility: " << utility << "\n";
@@ -182,7 +186,7 @@ class DecisionEngine {
           std::cout << "    High score!\n";
 #endif
           highest_score = score;
-          best_decision = decision;
+          best_index = i;
           if (score == utility) {
 #ifdef NDEBUG
             std::cout << "    Can't do better than this. Quitting.\n";
@@ -191,7 +195,7 @@ class DecisionEngine {
           }
         }
       }
-      return best_decision;
+      return std::get<1>(active_rules[best_index]).get();
     }
 
     /** Return a list of all Decisions which the Engine could use. */
@@ -205,7 +209,7 @@ class DecisionEngine {
     }
 
   protected:
-    using Rule = std::tuple<Event, Decision>;
+    using Rule = std::tuple<Event, std::reference_wrapper<Decision>>;
 
     std::unordered_map<Event, std::vector<Decision>> rules;
     std::vector<Rule> active_rules;
@@ -238,7 +242,7 @@ class DecisionEngine {
     void sort_active_decisions() {
       std::stable_sort(active_rules.begin(), active_rules.end(),
           [](const Rule& x, const Rule& y) {
-              return std::get<1>(x).getUtility() > std::get<1>(y).getUtility();
+              return std::get<1>(x).get().getUtility() > std::get<1>(y).get().getUtility();
           });
     }
 };
