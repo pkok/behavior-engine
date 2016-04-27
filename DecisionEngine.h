@@ -22,10 +22,7 @@
 #define actions [this](Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.
-enum class Event : unsigned int {
-  Always,
-  Penalized
-};
+enum class Event : unsigned int;
 
 /** Overloading std::hash for all enums. */
 namespace std {

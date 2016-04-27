@@ -5,6 +5,11 @@
 #define NDEBUG
 #include "DecisionEngine.h"
 
+enum class Event : unsigned int {
+  Always,
+  Penalized
+};
+
 class Test : public DecisionEngine{
   public:
     Test();
