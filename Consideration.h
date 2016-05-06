@@ -4,6 +4,8 @@
 #include <string>
 #include "Transform.h"
 
+using UtilityFunction = std::function<float()>;
+
 /** An indication of the usefulness of a decision.
  *
  * A Consideration receives a signal from the utilityFunction.  This
@@ -12,8 +14,16 @@
  */
 class Consideration {
   public:
-    Consideration(const std::string& description, std::function<float()> utilityFunction, Transform::Transform transform, float min=1.f, float max=1.f)
-      : description(description), utilityFunction(utilityFunction), transform(transform), min(min), max(max)
+    Consideration(const std::string& description,
+        UtilityFunction utilityFunction,
+        Transform::Transform transform,
+        float min=1.f,
+        float max=1.f)
+      : description(description),
+      utilityFunction(utilityFunction),
+      transform(transform),
+      min(min),
+      max(max)
     {}
 
     Consideration() = default;
@@ -28,7 +38,7 @@ class Consideration {
 
   private:
     std::string description;
-    std::function<float()> utilityFunction;
+    UtilityFunction utilityFunction;
     Transform::Transform transform;
     float min;
     float max;

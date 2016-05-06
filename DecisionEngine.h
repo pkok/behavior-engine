@@ -29,8 +29,8 @@
  *    of the Consideration and Action of a Decision, and thus these values
  *    should be static.
  */
-#define consideration(DESCRIPTION, MIN, MAX, TRANSFORM, FN) \
-  Consideration(DESCRIPTION, [&]() FN, TRANSFORM, MIN, MAX)
+#define consideration(DESCRIPTION, RANGE, TRANSFORM, FN) \
+  createConsideration(DESCRIPTION, [&]() FN, TRANSFORM, RANGE)
 #define actions [&](Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.
@@ -63,6 +63,17 @@ class description : public std::string {
   using std::string::string;
 };
 
+/** Only used for labeling in DecisionEngine::addDecision */
+class range : public std::tuple<float, float> {
+  using std::tuple<float, float>::tuple;
+};
+
+Consideration createConsideration(const description& d,
+    UtilityFunction f,
+    Transform::Transform t,
+    const range& r) {
+  return Consideration(d, f, t, std::get<0>(r), std::get<1>(r));
+}
 
 class DecisionException : public std::runtime_error {
   public:

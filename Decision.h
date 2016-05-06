@@ -32,7 +32,11 @@ class Decision {
   public:
     using Clock = std::chrono::steady_clock;
 
-    Decision(const std::string& name, const std::string& description, UtilityScore utility, std::vector<Consideration> considerations, const Action& action)
+    Decision(const std::string& name,
+        const std::string& description,
+        UtilityScore utility,
+        std::vector<Consideration> considerations,
+        const Action& action)
       : name(name),
       description(description),
       utility(utility),
