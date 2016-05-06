@@ -21,11 +21,11 @@ enum class UtilityScore : int {
 
 /** Container for an Action, that can be performed when it seems useful.
  *
- * A Decision is used in the DecisionEngine when it has the highest total 
- * utility score of all active Decisions.  The utility score indicates how 
+ * A Decision is used in the DecisionEngine when it has the highest total
+ * utility score of all active Decisions.  The utility score indicates how
  * useful it is in the current situation to execute a specific Action.
  *
- * The total utility score is computed as a function of this Decision's 
+ * The total utility score is computed as a function of this Decision's
  * utility, and the scores of its Considerations with Decision::computeScore().
  */
 class Decision {
@@ -33,7 +33,7 @@ class Decision {
     using Clock = std::chrono::steady_clock;
 
     Decision(const std::string& name, const std::string& description, UtilityScore utility, std::vector<Consideration> considerations, const Action& action)
-      : name(name), 
+      : name(name),
       description(description),
       utility(utility),
       considerations(considerations),
@@ -50,13 +50,13 @@ class Decision {
      * its Considerations.  Then, the score will be adjusted with a weighing
      * factor for the number of Considerations.
      *
-     * Because all Considerations will return a score between 0 and 1, we 
-     * can expect this number to become smaller for Decisions that have more 
-     * Considerations.  For example, a Decision A with three Considerations 
-     * scoring each 0.9 and utility of 1 has a score of 1 * 0.9 * 0.9 * 0.9 = 
-     * 0.729.  Another Decision B with 1 Consideration scoring 0.75 has a 
-     * total score of 1 * 0.75 = 0.75.  Intuitively, A should have a higher 
-     * score; each of its Considerations indicate that it is very important.  
+     * Because all Considerations will return a score between 0 and 1, we
+     * can expect this number to become smaller for Decisions that have more
+     * Considerations.  For example, a Decision A with three Considerations
+     * scoring each 0.9 and utility of 1 has a score of 1 * 0.9 * 0.9 * 0.9 =
+     * 0.729.  Another Decision B with 1 Consideration scoring 0.75 has a
+     * total score of 1 * 0.75 = 0.75.  Intuitively, A should have a higher
+     * score; each of its Considerations indicate that it is very important.
      * The weighing factor adjusts for this.
      */
     float computeScore() const {
@@ -87,7 +87,7 @@ class Decision {
     /** Execute the Action associated with this Decision. */
     void execute() {
       execution_timestamp = std::chrono::steady_clock::now();
-      action(*this); 
+      action(*this);
     }
 
   private:

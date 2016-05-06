@@ -16,7 +16,7 @@ namespace Transform {
 
   Transform Binary(float threshold) {
     return Transform([threshold](float value, float, float) {
-        if (value >= (float) threshold) 
+        if (value >= (float) threshold)
           return 1.f;
         return 0.f;
     });
