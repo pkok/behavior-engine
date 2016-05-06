@@ -11,7 +11,7 @@
  */
 class Consideration {
   public:
-    Consideration(std::function<float()> utilityFunction, Transform::Transform transform, float min=1., float max=1.) 
+    Consideration(std::function<float()> utilityFunction, Transform::Transform transform, float min=1.f, float max=1.f) 
       : utilityFunction(utilityFunction), transform(transform), min(min), max(max)
     {}
 

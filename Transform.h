@@ -10,15 +10,15 @@ namespace Transform {
     return (value - min) / (max - min);
   }
 
-  inline float clip(float value, float min=0., float max=1.) {
+  inline float clip(float value, float min=0.f, float max=1.f) {
     return value > max ? max : value < min ? min : value;
   }
 
   Transform Binary(float threshold) {
     return Transform([threshold](float value, float, float) {
         if (value >= (float) threshold) 
-          return 1.;
-        return 0.;
+          return 1.f;
+        return 0.f;
     });
   }
 
@@ -36,7 +36,7 @@ namespace Transform {
 
   Transform Inverted() {
     return Transform([](float value, float min, float max) {
-      return 1. - scale(value, min, max);
+      return 1.f - scale(value, min, max);
     });
   }
 
