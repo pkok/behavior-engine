@@ -225,7 +225,7 @@ class DecisionEngine {
             [](const Decision& x, const Decision& y) {
                 return x.getUtility() > y.getUtility();
             });
-        if (not do_sort_active_decisions && active_events.find(event) != active_events.end()) {
+        if (!do_sort_active_decisions && active_events.find(event) != active_events.end()) {
           do_sort_active_decisions = true;
         }
         if (do_sort_active_decisions) {
