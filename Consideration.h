@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 #include "Transform.h"
 
 /** An indication of the usefulness of a decision.
@@ -11,8 +12,8 @@
  */
 class Consideration {
   public:
-    Consideration(std::function<float()> utilityFunction, Transform::Transform transform, float min=1.f, float max=1.f)
-      : utilityFunction(utilityFunction), transform(transform), min(min), max(max)
+    Consideration(const std::string& description, std::function<float()> utilityFunction, Transform::Transform transform, float min=1.f, float max=1.f)
+      : description(description), utilityFunction(utilityFunction), transform(transform), min(min), max(max)
     {}
 
     Consideration() = default;
@@ -26,6 +27,7 @@ class Consideration {
     }
 
   private:
+    std::string description;
     std::function<float()> utilityFunction;
     Transform::Transform transform;
     float min;

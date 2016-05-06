@@ -29,8 +29,8 @@
  *    of the Consideration and Action of a Decision, and thus these values
  *    should be static.
  */
-#define consideration(MIN, MAX, TRANSFORM, FN) \
-  Consideration([&]() FN, TRANSFORM, MIN, MAX)
+#define consideration(DESCRIPTION, MIN, MAX, TRANSFORM, FN) \
+  Consideration(DESCRIPTION, [&]() FN, TRANSFORM, MIN, MAX)
 #define actions [&](Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.

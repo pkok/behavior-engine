@@ -62,7 +62,7 @@ Test::Test() : DecisionEngine() {
     events {Event::Always},
 
     considerations {
-      consideration(0, 1, Transform::Identity(), {
+      consideration("Randomness", 0, 1, Transform::Identity(), {
         return getRandom();
       }),
     },
@@ -80,7 +80,7 @@ Test::Test() : DecisionEngine() {
     events {Event::Always},
 
     considerations {
-      consideration(0, 1, Transform::Identity(), {
+      consideration("Randomness", 0, 1, Transform::Identity(), {
         return getRandom();
       }),
     },
@@ -98,7 +98,7 @@ Test::Test() : DecisionEngine() {
     events {Event::Always},
 
     considerations {
-      consideration(0, 1, Transform::Binary(true), {
+      consideration("Always true", 0, 1, Transform::Binary(true), {
         return true;
       }),
     },
