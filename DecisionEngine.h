@@ -17,6 +17,18 @@
 #include <iostream>
 #endif
 
+/** Using these macros, writing addDecision becomes more readable and less
+ *  error prone than typing them out.  Note that within the Decision you are
+ *  creating, you have access to other values through the following ways:
+ *  - Any member of the DecisionEngine instance through the this pointer
+ *  - Any member of the Decision instance through a reference
+ *  - Any other value defined in the current scope through a reference.
+ *    Note that this reference is not const, so any changes made to this
+ *    reference are observable by all other Decisions.  Also note that
+ *    these references have a shorter lifetime than the lambda expressions
+ *    of the Consideration and Action of a Decision, and thus these values
+ *    should be static.
+ */
 #define consideration(MIN, MAX, TRANSFORM, FN) \
   Consideration([&]() FN, TRANSFORM, MIN, MAX)
 #define actions [&](Decision& theDecision)
@@ -59,9 +71,9 @@ class DecisionException : public std::runtime_error {
 
 /** Lazily selects a Decision with the highest score from an activated subset.
  *
- * The DecisionEngine selects the optimal Decision, based on its 
+ * The DecisionEngine selects the optimal Decision, based on its
  * Decision::computeScore.  Each Decision is associated with an Event.  By
- * raising and clearing an Event, you load and unload the associated 
+ * raising and clearing an Event, you load and unload the associated
  * Decisions into the set of active Decisions.
  */
 class DecisionEngine {
@@ -89,7 +101,7 @@ class DecisionEngine {
     /** Load behavior associated with a specific Event.
      *
      * This does not unload behavior associated with any other raised Events.
-     * To unload these behaviors, use clearEvent(Event) to remove all 
+     * To unload these behaviors, use clearEvent(Event) to remove all
      * Decisions associated to a specific event, or clearActive() to empty the
      * list of active Decisions.
      */
@@ -106,8 +118,8 @@ class DecisionEngine {
       }
     }
 
-    /** Clear all known behaviors.  
-     * 
+    /** Clear all known behaviors.
+     *
      * After this, nothing is loaded, and no Decision will be loaded when any
      * Event is raised.
      */
@@ -137,13 +149,13 @@ class DecisionEngine {
       const auto& it = std::get<0>(active_events.insert(e));
       active_events.erase(it);
     }
-    
+
     /** Select the Decision with the highest score, and run its Action. */
     void executeBestDecision() {
       getBestDecision().execute();
     }
 
-    /** Select the Decision with the highest score. 
+    /** Select the Decision with the highest score.
      *
      * It should run as lazy as possible.  There is probably some
      * optimization to squeeze out of here.
@@ -213,9 +225,9 @@ class DecisionEngine {
     std::unordered_set<Event> active_events;
     std::unordered_set<Event> updated_events;
 
-    /** Sort Decisions in rules and active_rules based on their UtilityScore. 
+    /** Sort Decisions in rules and active_rules based on their UtilityScore.
      *
-     * It only sorts the containers which have been updated since the last 
+     * It only sorts the containers which have been updated since the last
      * invocation of sort_decisions().
      */
     void sort_decisions() {

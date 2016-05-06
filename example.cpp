@@ -43,6 +43,16 @@ void Test::report(const std::string& msg) {
 Test::Test() : DecisionEngine() {
   auto t = std::chrono::system_clock::now();
   generator.seed(static_cast<unsigned int>(t.time_since_epoch().count()));
+
+  // Within Decisions, you have access to values in the following scopes:
+  // - Any member of the DecisionEngine instance through the this pointer
+  // - Any member of the Decision instance through a reference
+  // - Any other value defined in the current scope through a reference.
+  //   Note that this reference is not const, so any changes made to this
+  //   reference are observable by all other Decisions.  Also note that
+  //   these references have a shorter lifetime than the lambda expressions
+  //   of the Consideration and Action of a Decision, and thus these values
+  //   should be static.
   static int counter = 0;
 
   addDecision(
@@ -51,7 +61,7 @@ Test::Test() : DecisionEngine() {
     UtilityScore::MostUseful,
     events {Event::Always},
 
-    considerations { 
+    considerations {
       consideration(0, 1, Transform::Identity(), {
         return getRandom();
       }),
@@ -93,7 +103,7 @@ Test::Test() : DecisionEngine() {
       }),
     },
 
-    actions { 
+    actions {
       report("This is never executed.");
     }
   );
