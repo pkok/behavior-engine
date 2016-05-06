@@ -18,8 +18,8 @@
 #endif
 
 #define consideration(MIN, MAX, TRANSFORM, FN) \
-  Consideration([this]() FN, TRANSFORM, MIN, MAX)
-#define actions [this](Decision& theDecision)
+  Consideration([&]() FN, TRANSFORM, MIN, MAX)
+#define actions [&](Decision& theDecision)
 
 // TODO: Fill this with your application-specific list of events.
 enum class Event : unsigned int;

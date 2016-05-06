@@ -15,15 +15,7 @@ class Test : public DecisionEngine{
     Test();
     float getRandom();
     void report(const std::string& msg);
-    void showActives() {
-      for (const auto& decision : getActiveDecisions()) {
-        std::cout << "- '"
-        << decision.getName()
-        << "' ("
-        << static_cast<std::underlying_type<UtilityScore>::type>(decision.getUtility())
-        << ")\n";
-      }
-    }
+    void showActives();
 
     std::mt19937 generator;
     std::uniform_real_distribution<float> distribution;
@@ -34,6 +26,16 @@ float Test::getRandom() {
   return distribution(generator);
 }
 
+void Test::showActives() {
+  for (const auto& decision : getActiveDecisions()) {
+    std::cout << "- '"
+      << decision.getName()
+      << "' ("
+      << static_cast<std::underlying_type<UtilityScore>::type>(decision.getUtility())
+      << ")\n";
+  }
+}
+
 void Test::report(const std::string& msg) {
   std::cout << msg << std::endl;
 }
@@ -41,6 +43,7 @@ void Test::report(const std::string& msg) {
 Test::Test() : DecisionEngine() {
   auto t = std::chrono::system_clock::now();
   generator.seed(static_cast<unsigned int>(t.time_since_epoch().count()));
+  static int counter = 0;
 
   addDecision(
     name("First decision"),
@@ -55,25 +58,27 @@ Test::Test() : DecisionEngine() {
     },
 
     actions {
+      report("Executed " + std::to_string(++counter) + " times");
       report("First decision");
     }
   );
 
   addDecision(
-      name("Another decision"),
-      description("Look, a story"),
-      UtilityScore::VeryUseful,
-      events {Event::Always},
+    name("Another decision"),
+    description("Look, a story"),
+    UtilityScore::VeryUseful,
+    events {Event::Always},
 
-      considerations {
-          consideration(0, 1, Transform::Identity(), {
-            return getRandom();
-          }),
-      },
+    considerations {
+      consideration(0, 1, Transform::Identity(), {
+        return getRandom();
+      }),
+    },
 
-      actions {
-          report(theDecision.getName());
-      }
+    actions {
+      report("Executed " + std::to_string(++counter) + " times");
+      report(theDecision.getName());
+    }
   );
 
   addDecision(

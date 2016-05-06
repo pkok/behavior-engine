@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 #include <string>
 #include <vector>
@@ -29,6 +30,8 @@ enum class UtilityScore : int {
  */
 class Decision {
   public:
+    using Clock = std::chrono::steady_clock;
+
     Decision(const std::string& name, const std::string& description, UtilityScore utility, std::vector<Consideration> considerations, const Action& action)
       : name(name), 
       description(description),
@@ -70,9 +73,22 @@ class Decision {
     const std::string& getDescription() const { return description; }
     UtilityScore getUtility() const { return utility; }
     const Action& getAction() const { return action; }
+    const Clock::time_point getExecutionTimestamp() const { return execution_timestamp; };
+    const Clock::duration getTimeSinceExecution() const {
+      return getTimeSinceExecution(std::chrono::steady_clock::now());
+    }
+    const Clock::duration getTimeSinceExecution(const Clock::time_point& timestamp) const {
+      return timestamp - execution_timestamp;
+    }
+    bool isNeverExecuted() const {
+      return execution_timestamp.time_since_epoch().count() == 0;
+    }
 
     /** Execute the Action associated with this Decision. */
-    void execute() { action(*this); }
+    void execute() {
+      execution_timestamp = std::chrono::steady_clock::now();
+      action(*this); 
+    }
 
   private:
     std::string name;
@@ -80,4 +96,5 @@ class Decision {
     UtilityScore utility;
     std::vector<Consideration> considerations;
     Action action;
+    std::chrono::steady_clock::time_point execution_timestamp;
 };
