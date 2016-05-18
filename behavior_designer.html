@@ -3,630 +3,77 @@
     <head>
       <meta charset="UTF-8">
       <title>Behavior Designer</title>
-      <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
-    </head>
-    <style>
+      <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+      <script
+			  src="https://code.jquery.com/jquery-2.2.3.min.js"
+			  integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="
+			  crossorigin="anonymous"></script>
+      <script src="behavior_designer.js"></script>
+      <script type="text/javascript">
+        $(document).ready(function() {
+          $(":button").prop("disabled", true);
+
+          $(":file#fileInput").change(function (event) {
+            $(":button:disabled").prop("disabled", false);
+            readSingleFile(event);
+          });
+
+          $(":button#addDecision").click(function() {
+            // TODO: implement addDecision
+          });
+
+          $(document).delegate(":button.addConsideration", "click", function() {
+            // TODO: implement addConsideration
+          });
+
+          $(":button#getCpp").click(function() {
+            if (intelligence !== null)
+              window.open('data:text/plain;charset=utf-8,' + encodeURI(intelligence.toCpp()));
+          });
+        });
+      </script>
+      <style>
         html {
-            padding: 0;
-            margin: 0;
+          padding: 0;
+          margin: 0;
         }
 
         #intelligence_container {
-            border: 3px dashed;
-            margin: 5px;
-            padding: 5px;
+          border: 3px dashed;
+          margin: 5px;
+          padding: 5px;
         }
 
         #decision_container {
-            border: 3px dashed;
-            margin: 5px;
-            padding: 5px;
+          border: 3px dashed;
+          margin: 5px;
+          padding: 5px;
         }
 
         .decision {
-            border: 3px dashed;
-            margin: 5px;
-            padding: 5px;
+          border: 3px dashed;
+          margin: 5px;
+          padding: 5px;
         }
 
         .consideration_container {
-            border: 3px dashed;
-            margin: 5px;
-            padding: 5px;
+          border: 3px dashed;
+          margin: 5px;
+          padding: 5px;
         }
 
         .consideration {
-            border: 3px dashed;
-            margin: 5px;
-            padding: 5px;
+          border: 3px dashed;
+          margin: 5px;
+          padding: 5px;
         }
-    </style>
+      </style>
+    </head>
     <body>
       <input type="file" id="fileInput" />
+      <input type="button" value="Add Decision" id="addDecision" />
+      <input type="button" value="C++" id="getCpp" />
         <div id="intelligence_container">
         </div>
     </body>
-
-    <script>
-      "use strict";
-      // Utility values
-      var utilities = [
-        "Ignore",
-        "SlightlyUseful",
-        "Useful",
-        "VeryUseful",
-        "MostUseful"
-      ];
-
-      // Transform functions
-      var transforms = [
-        {"type": "Binary", "args": ["threshold"]},
-        {"type": "Exponential", "args": ["base"]},
-        {"type": "Identity", "args": []},
-        {"type": "Inverted", "args": []},
-        {"type": "Linear", "args": ["slope", "intercept"]},
-        {"type": "Power", "args": ["power"]}
-      ];
-
-      // List of events.
-      // TODO: Users of this visualization should expand this list with their own events!
-      var events = [
-        "Always",
-        "Ignore"
-      ];
-
-      // Decision expressions
-      var decisionExpression        = /addDecision\(/g;
-      var nameExpression            = /name\(\s*"(.*)"\s*\)/;
-      var utilityExpression         = /UtilityScore::(.*),/;
-      var eventsExpression          = /events\(\s*(.*?),\s*(.*?)\s*\)\s*,/;
-      var actionExpression          = /actions \{\n([\s\S]*)\n\s*\}/;
-
-      // Consideration expressions
-      var considerationExpression   = /consideration\(/g;
-      var rangeExpression           = /range\(\s*(.*?),\s*(.*?)\s*\)\s*,/;
-      var transformExpression       = /Transform::\s*(\S*?)\s*\((.*?)(?:,(.*?))*\)/;
-      var inputExpression           = /Transform::.*?\(.*?\), \{/;
-
-      // Shared expressions
-      var descriptionExpression     = /description\(\s*"(.*)"\s*\)/;
-
-      var intelligence = 0;
-
-      function Intelligence(intelligenceText)
-      {
-        this.decisions = [];
-
-        // Parse file
-        let match = decisionExpression.exec(intelligenceText);
-        let id = 0;
-        while (match != null)
-        {
-          let startPos = match.index + match[0].length-1;
-          let endPos = findClosingBracket(intelligenceText, startPos, "normal");
-
-          if (endPos != -1)
-          {
-            let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
-            let theDecision = new Decision(id, decisionText);
-            this.decisions.push(theDecision);
-            id++;
-          }
-          match = decisionExpression.exec(intelligenceText);
-        }
-
-        this.initializeVisualizations = function()
-        {
-          for(let dec of this.decisions)
-          {
-            dec.initializeVisualizations();
-          }
-        }
-
-        this.toString = function() {
-          let out = '<div id="decision_container">';
-          for (let decision of this.decisions)
-          {
-            out += decision.toString();
-          }
-          out += '</div>';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let out = "";
-          for (let decision of this.decisions) {
-            out += decision.toCpp();
-            out += "\n";
-          }
-          return out;
-        };
-      }
-
-      function Name(name)
-      {
-        this.name = name;
-
-        this.toString = function() {
-          return '<input type="text" class="name" value="' + this.name + '"/>\n';
-        };
-
-        this.toCpp = function() {
-          return 'name("' + this.name + '")';
-        };
-      }
-
-      function Description(description)
-      {
-        this.description = description;
-
-        this.toString = function() {
-          return '<input type="text" class="description" value="' + this.description + '"/>\n';
-        };
-
-        this.toCpp = function() {
-          return 'description("' + this.description + '")';
-        };
-      }
-
-      function Utility(name)
-      {
-        if (utilities.indexOf(name) === -1)
-        {
-          throw new Error("'" + name  + "' is not a UtilityScore");
-        }
-        this.name = name;
-
-        this.toString = function() {
-          let out = '<select class="utility">\n';
-          for (let utility of utilities)
-          {
-            if (utility === this.name)
-            {
-              out += '<option selected value="' + utility + '">' + utility + '</option>\n';
-            }
-            else
-            {
-              out += '<option value="' + utility + '">' + utility + '</option>\n';
-            }
-          }
-          out += '</select>\n';
-          return out;
-        };
-
-        this.toCpp = function() {
-          return "UtilityScore::" + name;
-        }
-      }
-
-      // TODO: Parse eventText
-      function Events(eventText)
-      {
-        this.events = [];
-
-        this.toString = function() {
-          let out = '<ul class="events">';
-          for (let event of events) {
-            if (this.events.indexOf(event) !== -1)
-            {
-              out += '<li><input checked type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
-            }
-            else
-            {
-              out += '<li><input type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
-            }
-          }
-          out += '</ul>';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let cppEvents = this.events.map(function(x){ return "Event::" + x;});
-          let out = "events {";
-          out += cppEvents.join(", ");
-          out += "}";
-          return out;
-        };
-      }
-
-      function Action(action_code)
-      {
-        this.action_code = action_code;
-
-        this.toString = function() {
-          let out = '<textarea class="action" rows="10" cols="70" >\n';
-          out += this.action_code;
-          out += '\n</textarea>\n';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let out = 'actions {';
-          out += this.action_code;
-          out += '\n}';
-          return out;
-        };
-      }
-
-      function Decision(id, decisionText)
-      {
-        // Set decision information
-        this.id = id;
-        this.name = new Name(nameExpression.exec(decisionText)[1]);
-        this.description = new Description(descriptionExpression.exec(decisionText)[1]);
-        this.utility = new Utility(utilityExpression.exec(decisionText)[1]);
-        this.events = new Events("bwaaag!");
-        this.action = new Action(actionExpression.exec(decisionText)[1]);
-        this.considerations = [];
-
-        // Parse considerations
-        let conId = 0;
-        let match = considerationExpression.exec(decisionText);
-        while (match != null)
-        {
-          let startPos = match.index + match[0].length - 1;
-          let endPos = findClosingBracket(decisionText, startPos, "normal");
-          let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
-
-          let theConsideration = new Consideration(id, conId, considerationText);
-          this.considerations.push(theConsideration);
-          conId++;
-          match = considerationExpression.exec(decisionText)
-        }
-
-        this.initializeVisualizations = function()
-        {
-          for( let con of this.considerations)
-          {
-            con.transform.visualization.initialize();
-          }
-        }
-
-        this.toString = function() {
-          let htmlConsiderations = this.considerations.map(function(x){ return x.toString();});
-          let out = "";
-
-          out += '<div class="decision">\n';
-          out += this.name.toString();
-          out += this.description.toString();
-          out += this.utility.toString();
-          out += this.events.toString();
-          out += '<div class="considerations">\n';
-          out += htmlConsiderations.join("\n");
-          out += '</div>\n';
-          out += this.action.toString();
-          out += '</div>\n';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let cppConsiderations = this.considerations.map(function(x){ return x.toCpp();});
-          let out = "";
-
-          out += "addDecision(\n";
-          out += this.name.toCpp() + ",\n";
-          out += this.description.toCpp() + ",\n";
-          out += this.utility.toCpp() + ",\n";
-          out += this.events.toCpp() + ",\n";
-          out += "considerations {\n";
-          out += cppConsiderations.join(",\n");
-          out += "},";
-          out += this.action.toCpp();
-          out += ");\n";
-          return out;
-        };
-      }
-
-      function Range(regexRangeMatch)
-      {
-        if (regexRangeMatch.length !== 3)
-        {
-          throw new Error("Range needs 2 args");
-        }
-        this.minRange = parseFloat(regexRangeMatch[1]);
-        this.maxRange = parseFloat(regexRangeMatch[2]);
-
-        this.toString = function() {
-          let out = "";
-          out += '<span class="range">';
-          out += '<input class="min" type="number" value="' + this.minRange + '"/>';
-          out += '<input class="max" type="number" value="' + this.maxRange + '"/>';
-          out += '</span>';
-          return out;
-        };
-
-        this.toCpp = function() {
-          return "range(" + this.minRange + ", " + this.maxRange + ")";
-        };
-      }
-
-      function UtilityFunction(cpp_code)
-      {
-        this.cpp_code = cpp_code;
-
-        this.toString = function() {
-          let out = '<textarea class="utilityfunction" rows="10" cols="70" >\n';
-          out += this.cpp_code;
-          out += '\n</textarea>\n';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let out = "{";
-          out += this.cpp_code;
-          out += "\n}";
-          return out;
-        };
-      }
-
-      function Consideration(decId, id, considerationText)
-      {
-        let transformText = transformExpression.exec(considerationText)
-            .filter(function (element) { return element; });
-        let transformInputStart = inputExpression.exec(considerationText);
-        let inputStartPos = transformInputStart.index+transformInputStart[0].length;
-        let inputEndPos = findClosingBracket(considerationText, inputStartPos, "curly");
-
-        this.id = id;
-        this.decisionId = decId;
-        this.description = new Description(descriptionExpression.exec(considerationText)[1]);
-        this.range = new Range(rangeExpression.exec(considerationText));
-        this.transform = new Transform(this.decisionId, this.id, this.range, transformText[1], transformText.slice(2, transformText.length));
-        this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
-
-        this.toString = function() {
-          let out = '<div class="consideration">\n';
-          out += this.description.toString();
-          out += this.range.toString();
-          out += this.transform.toString();
-          out += this.utilityFunction.toString();
-          out += '</div>\n';
-          return out;
-        };
-
-        this.toCpp = function() {
-          let out = 'consideration(\n';
-          out += this.description.toCpp() + ",\n";
-          out += this.range.toCpp() + ",\n";
-          out += this.transform.toCpp() + ",\n";
-          out += "{\n";
-          out += this.utilityFunction.toCpp() + "\n";
-          out += "})";
-          return out;
-        };
-      }
-
-      function Visualization(type, decId, conId, range, args)
-      {
-        this.height = 200;
-        this.width = 400;
-        this.type = type;
-        this.decId = decId;
-        this.conId = conId;
-        this.range = range;
-        this.args = args;
-        this.name = "visualisation_"+this.decId+"_"+this.conId;
-
-        this.data = [];
-
-        let min = range.minRange;
-        let max = range.maxRange;
-        let step = (max-min)/100.0;
-
-        if (this.type === "Identity")
-        {
-          for (var i = min; i < max; i += step)
-          {
-            this.data.push({x: i , y: i});
-          }
-        }
-
-        for (let entry of this.data)
-        {
-          if (entry.y > 1) entry.y = 1;
-          if (entry.y < 0) entry.y = 0
-        }
-
-        this.initialize = function() {
-          var vis = d3.select('#'+this.name),
-          WIDTH = this.width,
-          HEIGHT = this.height,
-          MARGINS = {
-            top: 20,
-            right: 20,
-            bottom: 20,
-            left: 50
-          },
-          xRange = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([d3.min(this.data, function(d) {
-            return d.x;
-          }), d3.max(this.data, function(d) {
-            return d.x;
-          })]),
-          yRange = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([0, 1]),
-          xAxis = d3.svg.axis()
-            .scale(xRange)
-            .tickSize(1)
-            .tickSubdivide(true),
-          yAxis = d3.svg.axis()
-            .scale(yRange)
-            .tickSize(1)
-            .orient('left')
-            .tickSubdivide(true);
-
-          vis.append('svg:g')
-            .attr('class', 'x axis')
-            .attr('transform', 'translate(0,' + (HEIGHT - MARGINS.bottom) + ')')
-            .call(xAxis);
-
-          vis.append('svg:g')
-            .attr('class', 'y axis')
-            .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
-            .call(yAxis);
-
-          var lineFunc = d3.svg.line()
-            .x(function(d) {
-              return xRange(d.x);
-            })
-            .y(function(d) {
-              return yRange(d.y);
-            })
-            .interpolate('linear');
-
-          vis.append('svg:path')
-            .attr('d', lineFunc(this.data))
-            .attr('stroke', 'blue')
-            .attr('stroke-width', 2)
-            .attr('fill', 'none');
-        }
-
-        // Should read values from corresponding fields when their values have
-        // changed and update the data and axis
-        this.update = function()
-        {
-
-        }
-
-        this.toString = function() {
-          let out = "";
-
-          out += "<div class='plot_container'>\n";
-          out += "<svg id='"+this.name+"' width='"+this.width+"' height='"+this.height+"'></svg>\n";
-          out += "</div>\n";
-
-          return out;
-        };
-      }
-
-      // TODO: implement different transformations
-      function Transform(decId, conId, range, type, args)
-      {
-        let filteredTransforms = transforms.filter(function(element) { return element.type === type; });
-        if (filteredTransforms.length == 0) {
-          throw new Error("Transform '" + this.type + "' does not exist");
-        }
-        let arity = filteredTransforms[0].args.length;
-        if (args.length !== arity) {
-          throw new Error("Transform '" + this.type + "' should have "
-              + arity + " args; passed "
-              + args.length + " args");
-        }
-        this.decisionId = decId;
-        this.considerationId = conId;
-        this.range = range;
-        this.type = filteredTransforms[0].type;
-        this.args = args;
-
-        this.visualization = new Visualization(type, decId, conId, this.range, args);
-
-        this.toString = function() {
-          let htmlargs = [];
-          let out = '<select class="transform">\n';
-          for (let transform of transforms)
-          {
-            var htmlArgument = '';
-            if (transform.type === this.type)
-            {
-              out += '<option selected value="' + transform.type + '">' + transform.type + '</option>\n';
-              for (let i = 0; i < transform.args.length; i++)
-              {
-                htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-                    + '" placeholder="' + transform.args[i]
-                    + '" value="' + this.args[i] + '"/>\n';
-              }
-            }
-            else
-            {
-              out += '<option value="' + transform.type + '">' + transform.type + '</option>\n';
-              for (let i = 0; i < transform.args.length; i++)
-              {
-                htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-                    + '" placeholder="' + transform.args[i] + '"/>\n';
-              }
-            }
-            //console.log(htmlArgument);
-            htmlargs.push(htmlArgument);
-
-          }
-          out += '</select>\n';
-          out += htmlargs.join('');
-
-          out += this.visualization.toString();
-
-          return out;
-        };
-
-        this.toCpp = function() {
-          let out = "Transform::";
-          out += this.type;
-          out += "(";
-          out += this.args.join(", ");
-          out += ")";
-          return out;
-        };
-      }
-
-      // Finds the closing bracket of a given opening bracket.
-      function findClosingBracket(text, openPosition, bracketType)
-      {
-        let inString = false;
-        let count = 1;
-        let pos = openPosition + 1;
-
-        let o = "(";
-        let c = ")";
-        if (bracketType === "curly")
-        {
-          o = "{";
-          c = "}";
-        }
-        while (count != 0 && pos < text.length)
-        {
-          let char = text[pos];
-          switch (char)
-          {
-            case "\"":
-              if (text[pos-1] != "\\")
-                inString = !inString;
-              break;
-            case o:
-              if (!inString)
-                count++;
-              break;
-            case c:
-              if (!inString)
-                count--;
-              break;
-          }
-          if (count == 0)
-            return pos;
-          pos++;
-        }
-        return -1;
-      }
-
-      // Reads a given file from a input of type file and constructs the intelligence.
-      function readSingleFile(evt)
-      {
-        let f = evt.target.files[0];
-        if (f) {
-          let r = new FileReader();
-          r.onload = function (e) {
-            let content = e.target.result;
-            let intelligence = new Intelligence(content);
-            //console.log(intelligence);
-            let container = document.getElementById("intelligence_container");
-            container.innerHTML = intelligence.toString();
-            //console.log(intelligence.toCpp());
-            intelligence.initializeVisualizations();
-
-          };
-          r.readAsText(f);
-        } else {
-          console.log("Failed to load file");
-        }
-      }
-
-      // Bind the readSingleFile function to the file select button
-      document.getElementById('fileInput').addEventListener('change', readSingleFile, false);
-    </script>
 </html>
