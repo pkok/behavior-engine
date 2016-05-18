@@ -47,6 +47,7 @@
     </body>
 
     <script>
+    "use strict";
       // Utility values
       var utilities = [
         "Ignore",
@@ -58,12 +59,12 @@
 
       // Transform functions
       var transforms = [
-        {"type": "Binary", "arguments": ["threshold"]},
-        {"type": "Exponential", "arguments": ["base"]},
-        {"type": "Identity", "arguments": []},
-        {"type": "Inverted", "arguments": []},
-        {"type": "Linear", "arguments": ["slope", "intercept"]},
-        {"type": "Power", "arguments": ["power"]}
+        {"type": "Binary", "args": ["threshold"]},
+        {"type": "Exponential", "args": ["base"]},
+        {"type": "Identity", "args": []},
+        {"type": "Inverted", "args": []},
+        {"type": "Linear", "args": ["slope", "intercept"]},
+        {"type": "Power", "args": ["power"]}
       ];
 
       // List of events.
@@ -303,7 +304,7 @@
       {
         if (regexRangeMatch.length !== 3)
         {
-          throw new Error("Range needs 2 arguments");
+          throw new Error("Range needs 2 args");
         }
         this.minRange = regexRangeMatch[1];
         this.maxRange = regexRangeMatch[2];
@@ -379,25 +380,25 @@
       }
 
       // TODO: implement different transformations
-      function Transform(decId, conId, type, arguments)
+      function Transform(decId, conId, type, args)
       {
         let filteredTransforms = transforms.filter(function(element) { return element.type === type; });
         if (filteredTransforms.length == 0) {
           throw new Error("Transform '" + this.type + "' does not exist");
         }
-        let arity = filteredTransforms[0].arguments.length;
-        if (arguments.length !== arity) {
+        let arity = filteredTransforms[0].args.length;
+        if (args.length !== arity) {
           throw new Error("Transform '" + this.type + "' should have "
-              + arity + " arguments; passed "
-              + arguments.length + " arguments");
+              + arity + " args; passed "
+              + args.length + " args");
         }
         this.decisionId = decId;
         this.considerationId = conId;
         this.type = filteredTransforms[0].type;
-        this.arguments = arguments;
+        this.args = args;
 
         this.toString = function() {
-          let htmlArguments = [];
+          let htmlargs = [];
           let out = '<select class="transform">\n';
           for (let transform of transforms)
           {
@@ -405,27 +406,27 @@
             if (transform.type === this.type)
             {
               out += '<option selected value="' + transform.type + '">' + transform.type + '</option>\n';
-              for (let i = 0; i < transform.arguments.length; i++)
+              for (let i = 0; i < transform.args.length; i++)
               {
                 htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-                    + '" placeholder="' + transform.arguments[i]
-                    + '" value="' + this.arguments[i] + '"/>\n';
+                    + '" placeholder="' + transform.args[i]
+                    + '" value="' + this.args[i] + '"/>\n';
               }
             }
             else
             {
               out += '<option value="' + transform.type + '">' + transform.type + '</option>\n';
-              for (let i = 0; i < transform.arguments.length; i++)
+              for (let i = 0; i < transform.args.length; i++)
               {
                 htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-                    + '" placeholder="' + transform.arguments[i] + '"/>\n';
+                    + '" placeholder="' + transform.args[i] + '"/>\n';
               }
             }
             console.log(htmlArgument);
-            htmlArguments.push(htmlArgument);
+            htmlargs.push(htmlArgument);
           }
           out += '</select>\n';
-          out += htmlArguments.join('');
+          out += htmlargs.join('');
           return out;
         };
 
@@ -433,7 +434,7 @@
           let out = "Transform::";
           out += this.type;
           out += "(";
-          out += this.arguments.join(", ");
+          out += this.args.join(", ");
           out += ")";
           return out;
         };
