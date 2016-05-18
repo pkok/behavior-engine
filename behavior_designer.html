@@ -3,6 +3,7 @@
     <head>
       <meta charset="UTF-8">
       <title>Behavior Designer</title>
+      <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
     </head>
     <style>
         html {
@@ -47,7 +48,7 @@
     </body>
 
     <script>
-    "use strict";
+      "use strict";
       // Utility values
       var utilities = [
         "Ignore",
@@ -112,6 +113,14 @@
             id++;
           }
           match = decisionExpression.exec(intelligenceText);
+        }
+
+        this.initializeVisualizations = function()
+        {
+          for(let dec of this.decisions)
+          {
+            dec.initializeVisualizations();
+          }
         }
 
         this.toString = function() {
@@ -265,6 +274,14 @@
           match = considerationExpression.exec(decisionText)
         }
 
+        this.initializeVisualizations = function()
+        {
+          for( let con of this.considerations)
+          {
+            con.transform.visualization.initialize();
+          }
+        }
+
         this.toString = function() {
           let htmlConsiderations = this.considerations.map(function(x){ return x.toString();});
           let out = "";
@@ -306,8 +323,8 @@
         {
           throw new Error("Range needs 2 args");
         }
-        this.minRange = regexRangeMatch[1];
-        this.maxRange = regexRangeMatch[2];
+        this.minRange = parseFloat(regexRangeMatch[1]);
+        this.maxRange = parseFloat(regexRangeMatch[2]);
 
         this.toString = function() {
           let out = "";
@@ -354,7 +371,7 @@
         this.decisionId = decId;
         this.description = new Description(descriptionExpression.exec(considerationText)[1]);
         this.range = new Range(rangeExpression.exec(considerationText));
-        this.transform = new Transform(this.decisionId, this.id, transformText[1], transformText.slice(2, transformText.length));
+        this.transform = new Transform(this.decisionId, this.id, this.range, transformText[1], transformText.slice(2, transformText.length));
         this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
 
         this.toString = function() {
@@ -379,8 +396,109 @@
         };
       }
 
+      function Visualization(type, decId, conId, range, args)
+      {
+        this.height = 200;
+        this.width = 400;
+        this.type = type;
+        this.decId = decId;
+        this.conId = conId;
+        this.range = range;
+        this.args = args;
+        this.name = "visualisation_"+this.decId+"_"+this.conId;
+
+        this.data = [];
+
+        let min = range.minRange;
+        let max = range.maxRange;
+        let step = (max-min)/100.0;
+
+        if (this.type === "Identity")
+        {
+          for (var i = min; i < max; i += step)
+          {
+            this.data.push({x: i , y: i});
+          }
+        }
+
+        for (let entry of this.data)
+        {
+          if (entry.y > 1) entry.y = 1;
+          if (entry.y < 0) entry.y = 0
+        }
+
+        this.initialize = function() {
+          var vis = d3.select('#'+this.name),
+          WIDTH = this.width,
+          HEIGHT = this.height,
+          MARGINS = {
+            top: 20,
+            right: 20,
+            bottom: 20,
+            left: 50
+          },
+          xRange = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([d3.min(this.data, function(d) {
+            return d.x;
+          }), d3.max(this.data, function(d) {
+            return d.x;
+          })]),
+          yRange = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([0, 1]),
+          xAxis = d3.svg.axis()
+            .scale(xRange)
+            .tickSize(1)
+            .tickSubdivide(true),
+          yAxis = d3.svg.axis()
+            .scale(yRange)
+            .tickSize(1)
+            .orient('left')
+            .tickSubdivide(true);
+
+          vis.append('svg:g')
+            .attr('class', 'x axis')
+            .attr('transform', 'translate(0,' + (HEIGHT - MARGINS.bottom) + ')')
+            .call(xAxis);
+
+          vis.append('svg:g')
+            .attr('class', 'y axis')
+            .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
+            .call(yAxis);
+
+          var lineFunc = d3.svg.line()
+            .x(function(d) {
+              return xRange(d.x);
+            })
+            .y(function(d) {
+              return yRange(d.y);
+            })
+            .interpolate('linear');
+
+          vis.append('svg:path')
+            .attr('d', lineFunc(this.data))
+            .attr('stroke', 'blue')
+            .attr('stroke-width', 2)
+            .attr('fill', 'none');
+        }
+
+        // Should read values from corresponding fields when their values have
+        // changed and update the data and axis
+        this.update = function()
+        {
+
+        }
+
+        this.toString = function() {
+          let out = "";
+
+          out += "<div class='plot_container'>\n";
+          out += "<svg id='"+this.name+"' width='"+this.width+"' height='"+this.height+"'></svg>\n";
+          out += "</div>\n";
+
+          return out;
+        };
+      }
+
       // TODO: implement different transformations
-      function Transform(decId, conId, type, args)
+      function Transform(decId, conId, range, type, args)
       {
         let filteredTransforms = transforms.filter(function(element) { return element.type === type; });
         if (filteredTransforms.length == 0) {
@@ -394,8 +512,11 @@
         }
         this.decisionId = decId;
         this.considerationId = conId;
+        this.range = range;
         this.type = filteredTransforms[0].type;
         this.args = args;
+
+        this.visualization = new Visualization(type, decId, conId, this.range, args);
 
         this.toString = function() {
           let htmlargs = [];
@@ -422,11 +543,15 @@
                     + '" placeholder="' + transform.args[i] + '"/>\n';
               }
             }
-            console.log(htmlArgument);
+            //console.log(htmlArgument);
             htmlargs.push(htmlArgument);
+
           }
           out += '</select>\n';
           out += htmlargs.join('');
+
+          out += this.visualization.toString();
+
           return out;
         };
 
@@ -488,10 +613,12 @@
           r.onload = function (e) {
             let content = e.target.result;
             let intelligence = new Intelligence(content);
-            console.log(intelligence);
+            //console.log(intelligence);
             let container = document.getElementById("intelligence_container");
             container.innerHTML = intelligence.toString();
-            console.log(intelligence.toCpp());
+            //console.log(intelligence.toCpp());
+            intelligence.initializeVisualizations();
+
           };
           r.readAsText(f);
         } else {
