@@ -1,4 +1,5 @@
 "use strict";
+
 /**
  * This library provides a graphical editor and viewer for this C++
  * DecisionEngine's collection of Decisions.  It can read in a file with
@@ -35,37 +36,38 @@ const descriptionExpression     = /description\(\s*"(.*)"\s*\)/;
 
 var intelligence = null;
 
-function Intelligence(intelligenceText)
+class Intelligence
 {
-  this.decisions = [];
+  constructor(intelligenceText) {
+    this.decisions = [];
 
-  // Parse file
-  let match = decisionExpression.exec(intelligenceText);
-  let id = 0;
-  while (match != null)
-  {
-    let startPos = match.index + match[0].length-1;
-    let endPos = findClosingBracket(intelligenceText, startPos, "normal");
-
-    if (endPos != -1)
+    // Parse file
+    let match = decisionExpression.exec(intelligenceText);
+    let id = 0;
+    while (match != null)
     {
-      let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
-      let theDecision = new Decision(id, decisionText);
-      this.decisions.push(theDecision);
-      id++;
+      let startPos = match.index + match[0].length-1;
+      let endPos = findClosingBracket(intelligenceText, startPos, "normal");
+
+      if (endPos != -1)
+      {
+        let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
+        let theDecision = new Decision(id, decisionText);
+        this.decisions.push(theDecision);
+        id++;
+      }
+      match = decisionExpression.exec(intelligenceText);
     }
-    match = decisionExpression.exec(intelligenceText);
   }
 
-  this.initializeVisualizations = function()
-  {
+  initializeVisualizations() {
     for(let dec of this.decisions)
     {
       dec.initializeVisualizations();
     }
-  };
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     let out = '<div id="decision_container">';
     for (let decision of this.decisions)
     {
@@ -73,50 +75,54 @@ function Intelligence(intelligenceText)
     }
     out += '</div>';
     return out;
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     let out = "";
     for (let decision of this.decisions) {
       out += decision.toCpp()
         + "\n";
     }
     return out;
-  };
+  }
 }
 
 
 /**
  * Wrapper for C++'s name type.
  */
-function Name(name)
+class Name
 {
-  this.name = name;
+  constructor(name) {
+    this.name = name;
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     return '<input type="text" placeholder="name" class="name" value="' + this.name + '"/>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return 'name("' + this.name + '")';
-  };
+  }
 }
 
 
 /**
  * Wrapper for C++'s description type.
  */
-function Description(description)
+class Description
 {
-  this.description = description;
+  constructor(description) {
+    this.description = description;
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     return '<input type="text" placeholder="description" class="description" value="' + this.description + '"/>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return 'description("' + this.description + '")';
-  };
+  }
 }
 
 /**
@@ -125,25 +131,29 @@ function Description(description)
  * A list of all members of C++'s UtilityScore enumeration is checked to see
  * if this score is valid.
  */
-function UtilityScore(scoreLabel)
+class UtilityScore
 {
-  const validUtilityScores = [
-    "Ignore",
-    "SlightlyUseful",
-    "Useful",
-    "VeryUseful",
-    "MostUseful"
-  ];
-
-  if (validUtilityScores.indexOf(scoreLabel) === -1)
-  {
-    throw new Error("'" + scoreLabel  + "' is not a UtilityScore");
+  static get valid() {
+    return [
+      "Ignore",
+      "SlightlyUseful",
+      "Useful",
+      "VeryUseful",
+      "MostUseful"
+    ];
   }
-  this.score = scoreLabel;
 
-  this.toHtml = function() {
+  constructor(scoreLabel) {
+    if (UtilityScore.valid.indexOf(scoreLabel) === -1)
+    {
+      throw new Error("'" + scoreLabel  + "' is not a UtilityScore");
+    }
+    this.score = scoreLabel;
+  }
+
+  toHtml() {
     let out = '<select class="utility">\n';
-    for (let utility of validUtilityScores)
+    for (let utility of UtilityScore.valid)
     {
       if (utility === this.score)
       {
@@ -156,9 +166,9 @@ function UtilityScore(scoreLabel)
     }
     out += '</select>\n';
     return out;
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return "UtilityScore::" + this.score;
   }
 }
@@ -172,25 +182,29 @@ function UtilityScore(scoreLabel)
  * Users of this codebase normally implement their own Events.  If they do,
  * they should update this list accordingly.
  */
-function Events(eventLabels)
+class Events
 {
-  const validEvents = [
-    "Always",
-    "Ignore"
-  ];
-
-  for (let eventLabel of eventLabels)
-  {
-    if (validEvents.indexOf(eventLabel) === -1)
-    {
-      throw new Error("'" + eventLabel + "' is not a valid Event");
-    }
+  static get valid() {
+    return [
+      "Always",
+      "Ignore"
+    ];
   }
-  this.events = eventLabels;
 
-  this.toHtml = function() {
+  constructor(eventLabels) {
+    for (let eventLabel of eventLabels)
+    {
+      if (Events.valid.indexOf(eventLabel) === -1)
+      {
+        throw new Error("'" + eventLabel + "' is not a valid Event");
+      }
+    }
+    this.events = eventLabels;
+  }
+
+  toHtml() {
     let out = '<ul class="events">';
-    for (let event of validEvents) {
+    for (let event of Events.valid) {
       if (this.events.indexOf(event) !== -1)
       {
         out += '<li><input checked type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
@@ -202,35 +216,37 @@ function Events(eventLabels)
     }
     out += '</ul>';
     return out;
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     let cppEvents = this.events.map(function(x){ return "Event::" + x;});
     return "events {"
       + cppEvents.join(", ")
       + "}";
-  };
+  }
 }
 
 
 /**
  * Wrapper for C++'s Action type.
  */
-function Action(action_code)
+class Action
 {
-  this.action_code = action_code;
+  constructor(action_code) {
+    this.action_code = action_code;
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     return '<textarea placeholder="action" class="action" rows="10" cols="70" >\n'
       + this.action_code
       + '\n</textarea>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return 'actions {'
       + this.action_code
       + '\n}';
-  };
+  }
 }
 
 
@@ -239,41 +255,43 @@ function Action(action_code)
  *
  * It delegates further parsing of the C++ code for creating a Decision.
  */
-function Decision(id, decisionText)
+class Decision
 {
-  // Set decision information
-  this.id = id;
-  this.name = new Name(nameExpression.exec(decisionText)[1]);
-  this.description = new Description(descriptionExpression.exec(decisionText)[1]);
-  this.utility = new UtilityScore(utilityExpression.exec(decisionText)[1]);
-  this.events = new Events(eventsExpression.exec(decisionText).slice(1).filter(Boolean));
-  this.action = new Action(actionExpression.exec(decisionText)[1]);
-  this.considerations = [];
+  constructor(id, decisionText) {
+    // Set decision information
+    this.id = id;
+    this.name = new Name(nameExpression.exec(decisionText)[1]);
+    this.description = new Description(descriptionExpression.exec(decisionText)[1]);
+    this.utility = new UtilityScore(utilityExpression.exec(decisionText)[1]);
+    this.events = new Events(eventsExpression.exec(decisionText).slice(1).filter(Boolean));
+    this.action = new Action(actionExpression.exec(decisionText)[1]);
+    this.considerations = [];
 
-  // Parse considerations
-  let conId = 0;
-  let match = considerationExpression.exec(decisionText);
-  while (match != null)
-  {
-    let startPos = match.index + match[0].length - 1;
-    let endPos = findClosingBracket(decisionText, startPos, "normal");
-    let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
+    // Parse considerations
+    let conId = 0;
+    let match = considerationExpression.exec(decisionText);
+    while (match != null)
+    {
+      let startPos = match.index + match[0].length - 1;
+      let endPos = findClosingBracket(decisionText, startPos, "normal");
+      let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
 
-    let theConsideration = new Consideration(id, conId, considerationText);
-    this.considerations.push(theConsideration);
-    conId++;
-    match = considerationExpression.exec(decisionText)
+      let theConsideration = new Consideration(id, conId, considerationText);
+      this.considerations.push(theConsideration);
+      conId++;
+      match = considerationExpression.exec(decisionText)
+    }
   }
 
-  this.initializeVisualizations = function()
+  initializeVisualizations()
   {
     for( let con of this.considerations)
     {
       con.transform.visualization.initialize();
     }
-  };
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml();});
     return '<div class="decision">\n'
       + this.name.toHtml()
@@ -286,9 +304,9 @@ function Decision(id, decisionText)
       + '</div>\n'
       + this.action.toHtml()
       + '</div>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     let cppConsiderations = this.considerations.map(function(x){ return x.toCpp();});
     return "addDecision(\n"
       + this.name.toCpp() + ",\n"
@@ -300,53 +318,56 @@ function Decision(id, decisionText)
       + "},\n"
       + this.action.toCpp()
       + ");\n";
-  };
+  }
 }
 
 
 /**
  * Wrapper for C++'s range type.
  */
-function Range(regexRangeMatch)
+class Range
 {
-  if (regexRangeMatch.length !== 3)
-  {
-    throw new Error("Range needs 2 arguments");
+  constructor(regexRangeMatch) {
+    if (regexRangeMatch.length !== 3)
+    {
+      throw new Error("Range needs 2 arguments");
+    }
+    this.minRange = parseFloat(regexRangeMatch[1]);
+    this.maxRange = parseFloat(regexRangeMatch[2]);
   }
-  this.minRange = parseFloat(regexRangeMatch[1]);
-  this.maxRange = parseFloat(regexRangeMatch[2]);
 
-  this.toHtml = function() {
+  toHtml() {
     return '<span class="range">'
       + '<input placeholder="min" class="min" type="number" value="' + this.minRange + '"/>'
       + '<input placeholder="max" class="max" type="number" value="' + this.maxRange + '"/>'
       + '</span>';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return "range(" + this.minRange + ", " + this.maxRange + ")";
-  };
+  }
 }
 
 
 /**
  * Wrapper for C++'s UtilityFunction type.
  */
-function UtilityFunction(cpp_code)
-{
-  this.cpp_code = cpp_code;
+class UtilityFunction {
+  constructor(cpp_code) {
+    this.cpp_code = cpp_code;
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     return '<textarea placeholder="utility function" class="utilityfunction" rows="10" cols="70" >\n'
       + this.cpp_code
       + '\n</textarea>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return "{"
       + this.cpp_code
       + "\n}";
-  };
+  }
 }
 
 /**
@@ -354,30 +375,32 @@ function UtilityFunction(cpp_code)
  *
  * It delegates further parsing of the C++ code for creating a Consideration.
  */
-function Consideration(decId, id, considerationText)
+class Consideration
 {
-  let transformText = transformExpression.exec(considerationText).filter(Boolean);
-  let transformInputStart = inputExpression.exec(considerationText);
-  let inputStartPos = transformInputStart.index+transformInputStart[0].length;
-  let inputEndPos = findClosingBracket(considerationText, inputStartPos, "curly");
+  constructor(decId, id, considerationText) {
+    let transformText = transformExpression.exec(considerationText).filter(Boolean);
+    let transformInputStart = inputExpression.exec(considerationText);
+    let inputStartPos = transformInputStart.index+transformInputStart[0].length;
+    let inputEndPos = findClosingBracket(considerationText, inputStartPos, "curly");
 
-  this.id = id;
-  this.decisionId = decId;
-  this.description = new Description(descriptionExpression.exec(considerationText)[1]);
-  this.range = new Range(rangeExpression.exec(considerationText));
-  this.transform = new Transform(this.decisionId, this.id, this.range, transformText[1], transformText.slice(2, transformText.length));
-  this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
+    this.id = id;
+    this.decisionId = decId;
+    this.description = new Description(descriptionExpression.exec(considerationText)[1]);
+    this.range = new Range(rangeExpression.exec(considerationText));
+    this.transform = new Transform(this.decisionId, this.id, this.range, transformText[1], transformText.slice(2, transformText.length));
+    this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     return '<div class="consideration">\n'
       + this.description.toHtml()
       + this.range.toHtml()
       + this.transform.toHtml()
       + this.utilityFunction.toHtml()
       + '</div>\n';
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return 'consideration(\n'
       + this.description.toCpp() + ",\n"
       + this.range.toCpp() + ",\n"
@@ -385,45 +408,44 @@ function Consideration(decId, id, considerationText)
       + "{\n"
       + this.utilityFunction.toCpp() + "\n"
       + "})";
-  };
+  }
 }
 
-function Visualization(type, decId, conId, range, args)
+class Visualization
 {
-  this.height = 200;
-  this.width = 400;
-  this.type = type;
-  this.decId = decId;
-  this.conId = conId;
-  this.range = range;
-  this.args = args;
-  this.name = "visualisation_"+this.decId+"_"+this.conId;
+  constructor(type, decId, conId, range, args) {
+    this.height = 200;
+    this.width = 400;
+    this.type = type;
+    this.decId = decId;
+    this.conId = conId;
+    this.range = range;
+    this.args = args;
+    this.name = "visualisation_"+this.decId+"_"+this.conId;
 
-  this.data = [];
+    this.data = [];
+  }
 
-  this.scale = function(value, min, max)
-  {
+  scale(value, min, max) {
     return (value - min) / (max - min);
   }
 
   /*
-  this.clip = function(float value, float min=0.0, float max=1.0)
-  {
+  clip(float value, float min=0.0, float max=1.0) {
     return value > max ? max : value < min ? min : value;
   }
   */
 
-  this.generateData = function()
-  {
-    let min = range.minRange;
-    let max = range.maxRange;
+  generateData() {
+    let min = this.range.minRange;
+    let max = this.range.maxRange;
     let step = (max-min)/100.0;
     console.log(this.args);
     switch(this.type)
     {
       case "Binary":
         let threshold = parseFloat(this.args[0]);
-        for (var i = min; i < max; i += step)
+        for (let i = min; i < max; i += step)
         {
           let val = 0.0;
           if( i >= threshold ) val = 1.0;
@@ -433,7 +455,7 @@ function Visualization(type, decId, conId, range, args)
 
       case "Exponential":
         let base = parseFloat(this.args[0]);
-        for (var i = min; i < max; i += step)
+        for (let i = min; i < max; i += step)
         {
           // scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
           let val = this.scale(Math.pow(base, i), Math.pow(base, min), Math.pow(base, max));
@@ -442,14 +464,14 @@ function Visualization(type, decId, conId, range, args)
         break;
 
       case "Identity":
-        for (var i = min; i < max; i += step)
+        for (let i = min; i < max; i += step)
         {
           this.data.push({x: i , y: this.scale(i, min, max)});
         }
         break;
 
       case "Inverted":
-        for (var i = min; i < max; i += step)
+        for (let i = min; i < max; i += step)
         {
           this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
         }
@@ -460,7 +482,7 @@ function Visualization(type, decId, conId, range, args)
         let slope = parseFloat(this.args[0]);
         let intercept = parseFloat(this.args[1]);
 
-        for (var i = min; i < max; i += step)
+        for (let i = min; i < max; i += step)
         {
           let val = this.clip(slope * this.scale(value, min, max) + intercept);
           this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
@@ -520,9 +542,9 @@ function Visualization(type, decId, conId, range, args)
     }
   }
 
-  this.initialize = function() {
+  initialize() {
     this.generateData();
-    var vis = d3.select('#'+this.name),
+    let vis = d3.select('#'+this.name),
       WIDTH = this.width,
       HEIGHT = this.height,
       MARGINS = {
@@ -557,7 +579,7 @@ function Visualization(type, decId, conId, range, args)
       .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
       .call(yAxis);
 
-    var lineFunc = d3.svg.line()
+    let lineFunc = d3.svg.line()
       .x(function(d) {
         return xRange(d.x);
       })
@@ -572,16 +594,15 @@ function Visualization(type, decId, conId, range, args)
       .attr('stroke-width', 2)
       .attr('fill', 'none');
 
-  };
+  }
 
   // Should read values from corresponding fields when their values have
   // changed and update the data and axis
-  this.update = function()
-  {
+  update() {
 
-  };
+  }
 
-  this.toHtml = function() {
+  toHtml() {
     let out = "";
 
     out += "<div class='plot_container'>\n";
@@ -589,45 +610,50 @@ function Visualization(type, decId, conId, range, args)
     out += "</div>\n";
 
     return out;
-  };
+  }
 }
 
 // TODO: implement different transformations
-function Transform(decId, conId, range, type, args)
+class Transform
 {
-  const validTransforms = [
-    {"type": "Binary", "args": ["threshold"]},
-    {"type": "Exponential", "args": ["base"]},
-    {"type": "Identity", "args": []},
-    {"type": "Inverted", "args": []},
-    {"type": "Linear", "args": ["slope", "intercept"]},
-    {"type": "Power", "args": ["power"]}
-  ];
-  let filteredTransforms = validTransforms.filter(function(element) { return element.type === type; });
-  if (filteredTransforms.length == 0) {
-    throw new Error("Transform '" + this.type + "' does not exist");
+  static get valid() {
+    return [
+      {"type": "Binary", "args": ["threshold"]},
+      {"type": "Exponential", "args": ["base"]},
+      {"type": "Identity", "args": []},
+      {"type": "Inverted", "args": []},
+      {"type": "Linear", "args": ["slope", "intercept"]},
+      {"type": "Power", "args": ["power"]}
+    ];
   }
-  let arity = filteredTransforms[0].args.length;
-  if (args.length !== arity) {
-    throw new Error("Transform '" + this.type + "' should have "
-      + arity + " arguments passed "
-      + args.length + " arguments");
-  }
-  this.decisionId = decId;
-  this.considerationId = conId;
-  this.range = range;
-  this.type = filteredTransforms[0].type;
-  this.args = args;
 
-  this.visualization = new Visualization(type, decId, conId, this.range, args);
+  constructor(decId, conId, range, type, args) {
+    let filteredTransforms = Transform.valid.filter(function(element) { return element.type === type; });
+    if (filteredTransforms.length == 0) {
+      throw new Error("Transform '" + this.type + "' does not exist");
+    }
+    let arity = filteredTransforms[0].args.length;
+    if (args.length !== arity) {
+      throw new Error("Transform '" + this.type + "' should have "
+        + arity + " arguments passed "
+        + args.length + " arguments");
+    }
+    this.decisionId = decId;
+    this.considerationId = conId;
+    this.range = range;
+    this.type = filteredTransforms[0].type;
+    this.args = args;
+
+    this.visualization = new Visualization(type, decId, conId, this.range, args);
+  }
 
   // TODO: Implement a better HTML representation.
-  this.toHtml = function() {
+  toHtml() {
     let htmlArgs = [];
     let out = '<select class="transform">\n';
-    for (let transform of validTransforms)
+    for (let transform of Transform.valid)
     {
-      var htmlArgument = '';
+      let htmlArgument = '';
       if (transform.type === this.type)
       {
         out += '<option selected value="' + transform.type + '">' + transform.type + '</option>\n';
@@ -654,15 +680,15 @@ function Transform(decId, conId, range, type, args)
     out += this.visualization.toHtml();
 
     return out;
-  };
+  }
 
-  this.toCpp = function() {
+  toCpp() {
     return "Transform::"
       + this.type
       + "("
       + this.args.join(", ")
       + ")";
-  };
+  }
 }
 
 /** Finds the closing bracket of a given opening bracket.
