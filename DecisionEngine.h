@@ -30,8 +30,8 @@
  *    should be static.
  */
 #define consideration(DESCRIPTION, RANGE, TRANSFORM, FN) \
-  createConsideration(DESCRIPTION, [&]() FN, TRANSFORM, RANGE)
-#define actions [&](Decision& theDecision)
+  createConsideration(DESCRIPTION, [&]() mutable FN, TRANSFORM, RANGE)
+#define actions [&](Decision& theDecision) mutable
 
 // TODO: Fill this with your application-specific list of events.
 enum class Event : unsigned int;
