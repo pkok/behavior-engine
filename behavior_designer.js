@@ -401,25 +401,127 @@ function Visualization(type, decId, conId, range, args)
 
   this.data = [];
 
-  let min = range.minRange;
-  let max = range.maxRange;
-  let step = (max-min)/100.0;
-
-  if (this.type === "Identity")
+  this.scale = function(value, min, max)
   {
-    for (var i = min; i < max; i += step)
+    return (value - min) / (max - min);
+  }
+
+  /*
+  this.clip = function(float value, float min=0.0, float max=1.0)
+  {
+    return value > max ? max : value < min ? min : value;
+  }
+  */
+
+  this.generateData = function()
+  {
+    let min = range.minRange;
+    let max = range.maxRange;
+    let step = (max-min)/100.0;
+    console.log(this.args);
+    switch(this.type)
     {
-      this.data.push({x: i , y: i});
+      case "Binary":
+        let threshold = parseFloat(this.args[0]);
+        for (var i = min; i < max; i += step)
+        {
+          let val = 0.0;
+          if( i >= threshold ) val = 1.0;
+          this.data.push({x: i , y: val});
+        }
+        break;
+
+      case "Exponential":
+        let base = parseFloat(this.args[0]);
+        for (var i = min; i < max; i += step)
+        {
+          // scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
+          let val = this.scale(Math.pow(base, i), Math.pow(base, min), Math.pow(base, max));
+          this.data.push({x: i , y: val});
+        }
+        break;
+
+      case "Identity":
+        for (var i = min; i < max; i += step)
+        {
+          this.data.push({x: i , y: this.scale(i, min, max)});
+        }
+        break;
+
+      case "Inverted":
+        for (var i = min; i < max; i += step)
+        {
+          this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
+        }
+        break;
+
+      case "Linear":
+        /*
+        let slope = parseFloat(this.args[0]);
+        let intercept = parseFloat(this.args[1]);
+
+        for (var i = min; i < max; i += step)
+        {
+          let val = this.clip(slope * this.scale(value, min, max) + intercept);
+          this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
+        }
+
+        });
+        break;
+        */
+      case "Power":
+
+        break;
+    }
+    /*
+    Transform Binary(float threshold) {
+      return Transform([threshold](float value, float, float) {
+          if (value >= (float) threshold)
+            return 1.f;
+          return 0.f;
+      });
+    }
+
+    Transform Exponential(float base) {
+      return Transform([base](float value, float min, float max) {
+          return scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
+      });
+    }
+
+    Transform Identity() {
+      return Transform([](float value, float min, float max) {
+        return scale(value, min, max);
+      });
+    }
+
+    Transform Inverted() {
+      return Transform([](float value, float min, float max) {
+        return 1.f - scale(value, min, max);
+      });
+    }
+
+    Transform Linear(float slope, float intercept) {
+      return Transform([slope, intercept](float value, float min, float max) {
+        return clip(slope * scale(value, min, max) + intercept);
+      });
+    }
+
+    Transform Power(float power) {
+      return Transform([power](float value, float min, float max) {
+          return scale(std::pow(value, power), std::pow(min, power), std::pow(max, power));
+      });
+    }
+    */
+
+    for (let entry of this.data)
+    {
+      if (entry.y > 1) entry.y = 1;
+      if (entry.y < 0) entry.y = 0
     }
   }
 
-  for (let entry of this.data)
-  {
-    if (entry.y > 1) entry.y = 1;
-    if (entry.y < 0) entry.y = 0
-  }
-
   this.initialize = function() {
+    this.generateData();
     var vis = d3.select('#'+this.name),
       WIDTH = this.width,
       HEIGHT = this.height,
@@ -469,6 +571,7 @@ function Visualization(type, decId, conId, range, args)
       .attr('stroke', 'blue')
       .attr('stroke-width', 2)
       .attr('fill', 'none');
+
   };
 
   // Should read values from corresponding fields when their values have
