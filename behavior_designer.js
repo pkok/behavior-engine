@@ -19,7 +19,7 @@
 
 /* Regular expressions to parse the calls to DecisionEngine::addDecision */
 // Decision expressions
-const numberExpression          = /\d+/;
+const idNumberExpression        = /\d+\s*$/;
 const decisionExpression        = /addDecision\(/g;
 const nameExpression            = /name\(\s*"(.*)"\s*\)/;
 const utilityExpression         = /UtilityScore::(.*),/;
@@ -89,7 +89,7 @@ class Intelligence
 
   update(element_stack) {
     let decision = element_stack.pop();
-    let match = numberExpression.exec(decision.attr('id'));
+    let match = idNumberExpression.exec(decision.attr('id'));
     let decisionIndex = parseInt(match[0], 10);
     if (isNaN(decisionIndex)) {
       return false;
@@ -398,7 +398,7 @@ class Decision
     let top = element_stack.pop();
     if (top.hasClass("considerations")) {
       let consideration = element_stack.pop();
-      let match = numberExpression.exec(consideration.attr('id'));
+      let match = idNumberExpression.exec(consideration.attr('id'));
       let considerationIndex = parseInt(match[0], 10);
       if (isNaN(considerationIndex)) {
         return false;
