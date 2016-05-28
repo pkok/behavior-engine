@@ -19,6 +19,7 @@
 
 /* Regular expressions to parse the calls to DecisionEngine::addDecision */
 // Decision expressions
+const numberExpression          = /\d+/;
 const decisionExpression        = /addDecision\(/g;
 const nameExpression            = /name\(\s*"(.*)"\s*\)/;
 const utilityExpression         = /UtilityScore::(.*),/;
@@ -36,7 +37,8 @@ const descriptionExpression     = /description\(\s*"(.*)"\s*\)/;
 
 var intelligence = null;
 
-class Intelligence
+//noinspection JSDuplicatedDeclaration
+class Intelligence 
 {
   constructor(intelligenceText) {
     this.decisions = [];
@@ -52,9 +54,8 @@ class Intelligence
       if (endPos != -1)
       {
         let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
-        let theDecision = new Decision(id, decisionText);
+        let theDecision = new Decision(id++, decisionText);
         this.decisions.push(theDecision);
-        id++;
       }
       match = decisionExpression.exec(intelligenceText);
     }
@@ -84,6 +85,13 @@ class Intelligence
         + "\n";
     }
     return out;
+  }
+
+  update(element_stack) {
+    let decision = element_stack.pop();
+    let match = numberExpression.exec(decision.attr('id'));
+    let decisionIndex = parseInt(match[0], 10);
+    return this.decisions[decisionIndex].update(element_stack);
   }
 }
 
@@ -276,9 +284,8 @@ class Decision
       let endPos = findClosingBracket(decisionText, startPos, "normal");
       let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
 
-      let theConsideration = new Consideration(id, conId, considerationText);
+      let theConsideration = new Consideration(this.id, conId++, considerationText);
       this.considerations.push(theConsideration);
-      conId++;
       match = considerationExpression.exec(decisionText)
     }
   }
@@ -293,7 +300,7 @@ class Decision
 
   toHtml() {
     let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml();});
-    return '<div class="decision">\n'
+    return '<div class="decision" id="decision' + this.id + '">\n'
       + this.name.toHtml()
       + this.description.toHtml()
       + this.utility.toHtml()
@@ -318,6 +325,11 @@ class Decision
       + "},\n"
       + this.action.toCpp()
       + ");\n";
+  }
+  
+  update(element_stack) {
+    console.log("Updating Decision " + this.id + " '" + this.name.name + "'");
+    console.warn("Update of Decisions is not implemented yet.");
   }
 }
 
@@ -352,7 +364,8 @@ class Range
 /**
  * Wrapper for C++'s UtilityFunction type.
  */
-class UtilityFunction {
+class UtilityFunction 
+{
   constructor(cpp_code) {
     this.cpp_code = cpp_code;
   }
@@ -392,7 +405,7 @@ class Consideration
   }
 
   toHtml() {
-    return '<div class="consideration">\n'
+    return '<div class="consideration" id="decision' + this.decisionId + '-consideration' + this.id + '">\n'
       + this.description.toHtml()
       + this.range.toHtml()
       + this.transform.toHtml()
@@ -440,7 +453,6 @@ class Visualization
     let min = this.range.minRange;
     let max = this.range.maxRange;
     let step = (max-min)/100.0;
-    console.log(this.args);
     switch(this.type)
     {
       case "Binary":
@@ -760,4 +772,21 @@ function readSingleFile(evt)
   } else {
     console.log("Failed to load file");
   }
+}
+
+function updateOnChange(element, event) {
+  console.log("***");
+  console.log("Change event triggered.");
+  console.log(event);
+  console.log(element);
+  let stack = [$(element)];
+  while (!stack[stack.length - 1].hasClass("decision")) {
+    let ancestor = stack[stack.length - 1].parent();
+    stack.push(stack[stack.length - 1].parent());
+    if (ancestor.is('html')) {
+      throw new Error("Malformed HTML document: no element with class='decision' found.");
+    }
+  }
+  intelligence.update(stack);
+  console.log(stack);
 }
