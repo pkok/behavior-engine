@@ -38,7 +38,7 @@ const descriptionExpression     = /description\(\s*"(.*)"\s*\)/;
 var intelligence = null;
 
 //noinspection JSDuplicatedDeclaration
-class Intelligence 
+class Intelligence
 {
   constructor(intelligenceText) {
     this.decisions = [];
@@ -46,13 +46,11 @@ class Intelligence
     // Parse file
     let match = decisionExpression.exec(intelligenceText);
     let id = 0;
-    while (match != null)
-    {
+    while (match != null) {
       let startPos = match.index + match[0].length-1;
       let endPos = findClosingBracket(intelligenceText, startPos, "normal");
 
-      if (endPos != -1)
-      {
+      if (endPos != -1) {
         let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
         let theDecision = new Decision(id++, decisionText);
         this.decisions.push(theDecision);
@@ -62,16 +60,14 @@ class Intelligence
   }
 
   initializeVisualizations() {
-    for(let dec of this.decisions)
-    {
+    for (let dec of this.decisions) {
       dec.initializeVisualizations();
     }
   }
 
   toHtml() {
     let out = '<div id="decision_container">';
-    for (let decision of this.decisions)
-    {
+    for (let decision of this.decisions) {
       out += decision.toHtml();
     }
     out += '</div>';
@@ -87,14 +83,19 @@ class Intelligence
     return out;
   }
 
-  update(element_stack) {
-    let decision = element_stack.pop();
+  update(elementStack) {
+    let decision = elementStack.pop();
     let match = idNumberExpression.exec(decision.attr('id'));
     let decisionIndex = parseInt(match[0], 10);
-    if (isNaN(decisionIndex)) {
-      return false;
+    if (!isNaN(decisionIndex)) {
+      for (let decision of this.decisions) {
+        if (decision.id === decisionIndex) {
+          return decision.update(elementStack);
+        }
+      }
     }
-    return this.decisions[decisionIndex].update(element_stack);
+    console.error("Looking for decision#" + decisionIndex + ", but not found");
+    return false
   }
 }
 
@@ -171,8 +172,7 @@ class UtilityScore
   }
 
   constructor(scoreLabel) {
-    if (UtilityScore.valid.indexOf(scoreLabel) === -1)
-    {
+    if (UtilityScore.valid.indexOf(scoreLabel) === -1) {
       throw new Error("'" + scoreLabel  + "' is not a valid UtilityScore");
     }
     this.score = scoreLabel;
@@ -180,14 +180,11 @@ class UtilityScore
 
   toHtml() {
     let out = '<select class="utility">\n';
-    for (let utility of UtilityScore.valid)
-    {
-      if (utility === this.score)
-      {
+    for (let utility of UtilityScore.valid) {
+      if (utility === this.score) {
         out += '<option selected value="' + utility + '">' + utility + '</option>\n';
       }
-      else
-      {
+      else {
         out += '<option value="' + utility + '">' + utility + '</option>\n';
       }
     }
@@ -202,8 +199,7 @@ class UtilityScore
   update(element) {
     if (element.hasClass("utility")) {
       let newScore = element.val();
-      if (UtilityScore.valid.indexOf(newScore) === -1)
-      {
+      if (UtilityScore.valid.indexOf(newScore) === -1) {
         throw new Error("'" + newScore + "' is not a valid UtilityScore");
       }
       this.score = newScore;
@@ -232,10 +228,8 @@ class Events
   }
 
   constructor(eventLabels) {
-    for (let eventLabel of eventLabels)
-    {
-      if (Events.valid.indexOf(eventLabel) === -1)
-      {
+    for (let eventLabel of eventLabels) {
+      if (Events.valid.indexOf(eventLabel) === -1) {
         throw new Error("'" + eventLabel + "' is not a valid Event");
       }
     }
@@ -245,12 +239,10 @@ class Events
   toHtml() {
     let out = '<ul class="events">';
     for (let event of Events.valid) {
-      if (this.events.indexOf(event) !== -1)
-      {
+      if (this.events.indexOf(event) !== -1) {
         out += '<li><input checked type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
       }
-      else
-      {
+      else {
         out += '<li><input type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
       }
     }
@@ -259,17 +251,17 @@ class Events
   }
 
   toCpp() {
-    let cppEvents = this.events.map(function(x){ return "Event::" + x;});
+    let cppEvents = this.events.map(function(x){ return "Event::" + x; });
     return "events {"
       + cppEvents.join(", ")
       + "}";
   }
 
-  update(element_stack) {
-    if (element_stack.pop().hasClass("events")) {
-      element_stack.pop(); // LI element
-      let checkbox = element_stack.pop();
-      if (!element_stack.length) {
+  update(elementStack) {
+    if (elementStack.pop().hasClass("events")) {
+      elementStack.pop(); // LI element
+      let checkbox = elementStack.pop();
+      if (!elementStack.length) {
         let eventLabel = checkbox.val();
         if (Events.valid.indexOf(eventLabel) === -1) {
           throw new Error("'" + eventLabel + "' is not a valid Event");
@@ -299,25 +291,25 @@ class Events
  */
 class Action
 {
-  constructor(action_code) {
-    this.action_code = action_code;
+  constructor(cppCode) {
+    this.cppCode = cppCode;
   }
 
   toHtml() {
     return '<textarea placeholder="action" class="action" rows="10" cols="70" >\n'
-      + this.action_code
+      + this.cppCode
       + '\n</textarea>\n';
   }
 
   toCpp() {
     return 'actions {'
-      + this.action_code
+      + this.cppCode
       + '\n}';
   }
 
   update(element) {
     if (element.hasClass("action")) {
-      this.action_code = element.val();
+      this.cppCode = element.val();
       return true;
     }
     return false;
@@ -345,8 +337,7 @@ class Decision
     // Parse considerations
     let conId = 0;
     let match = considerationExpression.exec(decisionText);
-    while (match != null)
-    {
+    while (match != null) {
       let startPos = match.index + match[0].length - 1;
       let endPos = findClosingBracket(decisionText, startPos, "normal");
       let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
@@ -357,16 +348,14 @@ class Decision
     }
   }
 
-  initializeVisualizations()
-  {
-    for( let con of this.considerations)
-    {
+  initializeVisualizations() {
+    for (let con of this.considerations) {
       con.transform.visualization.initialize();
     }
   }
 
   toHtml() {
-    let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml();});
+    let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml(); });
     return '<div class="decision" id="decision' + this.id + '">\n'
       + this.name.toHtml()
       + this.description.toHtml()
@@ -381,7 +370,7 @@ class Decision
   }
 
   toCpp() {
-    let cppConsiderations = this.considerations.map(function(x){ return x.toCpp();});
+    let cppConsiderations = this.considerations.map(function(x){ return x.toCpp(); });
     return "addDecision(\n"
       + this.name.toCpp() + ",\n"
       + this.description.toCpp() + ",\n"
@@ -393,30 +382,28 @@ class Decision
       + this.action.toCpp()
       + ");\n";
   }
-  
-  update(element_stack) {
-    let top = element_stack.pop();
+
+  update(elementStack) {
+    let top = elementStack.pop();
     if (top.hasClass("considerations")) {
-      let consideration = element_stack.pop();
+      let consideration = elementStack.pop();
       let match = idNumberExpression.exec(consideration.attr('id'));
       let considerationIndex = parseInt(match[0], 10);
-      if (isNaN(considerationIndex)) {
-        return false;
-      }
-      for (let consideration of this.considerations)
-      {
-        if (consideration.id === considerationIndex) {
-          return consideration.update(element_stack);
+      if (!isNaN(considerationIndex)) {
+        for (let consideration of this.considerations) {
+          if (consideration.id === considerationIndex) {
+            return consideration.update(elementStack);
+          }
         }
       }
-      console.error("Looking for consideration#" + considerationIndex + " of decision#" + this.id +", but not found");
+      console.error("Looking for consideration#" + considerationIndex + " of decision#" + this.id + ", but not found");
       return false;
     }
     else if (top.hasClass("events")) {
-      element_stack.push(top);
-      return this.events.update(element_stack);
+      elementStack.push(top);
+      return this.events.update(elementStack);
     }
-    else if (!element_stack.length) {
+    else if (!elementStack.length) {
       if (top.hasClass("name")) {
         return this.name.update(top);
       }
@@ -441,8 +428,7 @@ class Decision
 class Range
 {
   constructor(regexRangeMatch) {
-    if (regexRangeMatch.length !== 3)
-    {
+    if (regexRangeMatch.length !== 3) {
       throw new Error("Range needs 2 arguments");
     }
     this.minRange = parseFloat(regexRangeMatch[1]);
@@ -460,10 +446,10 @@ class Range
     return "range(" + this.minRange + ", " + this.maxRange + ")";
   }
 
-  update(element_stack) {
-    if (element_stack.pop().hasClass("range")) {
-      let updateElement = element_stack.pop();
-      if (!element_stack.length) {
+  update(elementStack) {
+    if (elementStack.pop().hasClass("range")) {
+      let updateElement = elementStack.pop();
+      if (!elementStack.length) {
         let newValue = parseFloat(updateElement.val());
         if (!isNaN(newValue)) {
           if (updateElement.hasClass("min")) {
@@ -485,27 +471,27 @@ class Range
 /**
  * Wrapper for C++'s UtilityFunction type.
  */
-class UtilityFunction 
+class UtilityFunction
 {
-  constructor(cpp_code) {
-    this.cpp_code = cpp_code;
+  constructor(cppCode) {
+    this.cppCode = cppCode;
   }
 
   toHtml() {
     return '<textarea placeholder="utility function" class="utility_function" rows="10" cols="70" >\n'
-      + this.cpp_code
+      + this.cppCode
       + '\n</textarea>\n';
   }
 
   toCpp() {
     return "{"
-      + this.cpp_code
+      + this.cppCode
       + "\n}";
   }
 
   update(element) {
     if (element.hasClass("utility_function")) {
-      this.cpp_code = element.val();
+      this.cppCode = element.val();
       return true;
     }
     return false;
@@ -534,7 +520,7 @@ class Consideration
   }
 
   toHtml() {
-    return '<div class="consideration" id="decision' + this.decisionId + '-consideration' + this.id + '">\n'
+    return '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
       + this.description.toHtml()
       + this.range.toHtml()
       + this.transform.toHtml()
@@ -552,17 +538,17 @@ class Consideration
       + "})";
   }
 
-  update(element_stack) {
-    console.log(element_stack);
-    let top = element_stack.pop();
+  update(elementStack) {
+    console.log(elementStack);
+    let top = elementStack.pop();
     if (top.hasClass("range")) {
-      if (element_stack.length !== 1) {
+      if (elementStack.length !== 1) {
         return false;
       }
-      element_stack.push(top);
-      return this.range.update(element_stack);
+      elementStack.push(top);
+      return this.range.update(elementStack);
     }
-    else if (!element_stack.length) {
+    else if (!elementStack.length) {
       if (top.hasClass("description")) {
         return this.description.update(top);
       }
@@ -585,7 +571,7 @@ class Visualization
     this.conId = conId;
     this.range = range;
     this.args = args;
-    this.name = "visualisation_"+this.decId+"_"+this.conId;
+    this.name = "visualisation_" + this.decId + "_"+this.conId;
 
     this.data = [];
   }
@@ -604,22 +590,19 @@ class Visualization
     let min = this.range.minRange;
     let max = this.range.maxRange;
     let step = (max-min)/100.0;
-    switch(this.type)
-    {
+    switch(this.type) {
       case "Binary":
         let threshold = parseFloat(this.args[0]);
-        for (let i = min; i < max; i += step)
-        {
+        for (let i = min; i < max; i += step) {
           let val = 0.0;
-          if( i >= threshold ) val = 1.0;
+          if (i >= threshold) val = 1.0;
           this.data.push({x: i , y: val});
         }
         break;
 
       case "Exponential":
         let base = parseFloat(this.args[0]);
-        for (let i = min; i < max; i += step)
-        {
+        for (let i = min; i < max; i += step) {
           // scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
           let val = this.scale(Math.pow(base, i), Math.pow(base, min), Math.pow(base, max));
           this.data.push({x: i , y: val});
@@ -627,15 +610,13 @@ class Visualization
         break;
 
       case "Identity":
-        for (let i = min; i < max; i += step)
-        {
+        for (let i = min; i < max; i += step) {
           this.data.push({x: i , y: this.scale(i, min, max)});
         }
         break;
 
       case "Inverted":
-        for (let i = min; i < max; i += step)
-        {
+        for (let i = min; i < max; i += step) {
           this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
         }
         break;
@@ -645,8 +626,7 @@ class Visualization
         let slope = parseFloat(this.args[0]);
         let intercept = parseFloat(this.args[1]);
 
-        for (let i = min; i < max; i += step)
-        {
+        for (let i = min; i < max; i += step) {
           let val = this.clip(slope * this.scale(value, min, max) + intercept);
           this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
         }
@@ -698,8 +678,7 @@ class Visualization
     }
     */
 
-    for (let entry of this.data)
-    {
+    for (let entry of this.data) {
       if (entry.y > 1) entry.y = 1;
       if (entry.y < 0) entry.y = 0
     }
@@ -814,24 +793,19 @@ class Transform
   toHtml() {
     let htmlArgs = [];
     let out = '<select class="transform">\n';
-    for (let transform of Transform.valid)
-    {
+    for (let transform of Transform.valid) {
       let htmlArgument = '';
-      if (transform.type === this.type)
-      {
+      if (transform.type === this.type) {
         out += '<option selected value="' + transform.type + '">' + transform.type + '</option>\n';
-        for (let i = 0; i < transform.args.length; i++)
-        {
+        for (let i = 0; i < transform.args.length; i++) {
           htmlArgument += '<input type="text" class="transform-argument ' + transform.type
             + '" placeholder="' + transform.args[i]
             + '" value="' + this.args[i] + '"/>\n';
         }
       }
-      else
-      {
+      else {
         out += '<option value="' + transform.type + '">' + transform.type + '</option>\n';
-        for (let i = 0; i < transform.args.length; i++)
-        {
+        for (let i = 0; i < transform.args.length; i++) {
           htmlArgument += '<input type="text" class="transform-argument ' + transform.type
             + '" placeholder="' + transform.args[i] + '"/>\n';
         }
@@ -858,24 +832,20 @@ class Transform
  *
  * This is used to help parsing C++ code.
  */
-function findClosingBracket(text, openPosition, bracketType)
-{
+function findClosingBracket(text, openPosition, bracketType) {
   let inString = false;
   let count = 1;
   let pos = openPosition + 1;
 
   let o = "(";
   let c = ")";
-  if (bracketType === "curly")
-  {
+  if (bracketType === "curly") {
     o = "{";
     c = "}";
   }
-  while (count != 0 && pos < text.length)
-  {
+  while (count != 0 && pos < text.length) {
     let char = text[pos];
-    switch (char)
-    {
+    switch (char) {
       case "\"":
         if (text[pos-1] != "\\")
           inString = !inString;
@@ -903,8 +873,7 @@ function findClosingBracket(text, openPosition, bracketType)
  * When the file is loaded, it creates an Intelligence object that is a
  * Javascript representation of the set of Decisions.
  */
-function readSingleFile(evt)
-{
+function readSingleFile(evt) {
   //console.log(evt);
   let f = evt.target.files[0];
   if (f) {
