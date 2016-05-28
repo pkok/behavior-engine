@@ -91,6 +91,9 @@ class Intelligence
     let decision = element_stack.pop();
     let match = numberExpression.exec(decision.attr('id'));
     let decisionIndex = parseInt(match[0], 10);
+    if (isNaN(decisionIndex)) {
+      return false;
+    }
     return this.decisions[decisionIndex].update(element_stack);
   }
 }
@@ -112,6 +115,14 @@ class Name
   toCpp() {
     return 'name("' + this.name + '")';
   }
+
+  update(element) {
+    if (element.hasClass("name")) {
+      this.name = element.val();
+      return true;
+    }
+    return false;
+  }
 }
 
 
@@ -130,6 +141,14 @@ class Description
 
   toCpp() {
     return 'description("' + this.description + '")';
+  }
+
+  update(element) {
+    if (element.hasClass("description")) {
+      this.description = element.val();
+      return true;
+    }
+    return false;
   }
 }
 
@@ -154,7 +173,7 @@ class UtilityScore
   constructor(scoreLabel) {
     if (UtilityScore.valid.indexOf(scoreLabel) === -1)
     {
-      throw new Error("'" + scoreLabel  + "' is not a UtilityScore");
+      throw new Error("'" + scoreLabel  + "' is not a valid UtilityScore");
     }
     this.score = scoreLabel;
   }
@@ -178,6 +197,19 @@ class UtilityScore
 
   toCpp() {
     return "UtilityScore::" + this.score;
+  }
+
+  update(element) {
+    if (element.hasClass("utility")) {
+      let newScore = element.val();
+      if (UtilityScore.valid.indexOf(newScore) === -1)
+      {
+        throw new Error("'" + newScore + "' is not a valid UtilityScore");
+      }
+      this.score = newScore;
+      return true;
+    }
+    return false;
   }
 }
 
@@ -232,6 +264,33 @@ class Events
       + cppEvents.join(", ")
       + "}";
   }
+
+  update(element_stack) {
+    if (element_stack.pop().hasClass("events")) {
+      element_stack.pop(); // LI element
+      let checkbox = element_stack.pop();
+      if (!element_stack.length) {
+        let eventLabel = checkbox.val();
+        if (Events.valid.indexOf(eventLabel) === -1) {
+          throw new Error("'" + eventLabel + "' is not a valid Event");
+        }
+        if (checkbox.prop("checked")) {
+          if (this.events.indexOf(eventLabel) === -1) {
+            this.events.push(eventLabel);
+          }
+          return true;
+        }
+        else { // remove event from this.events
+          let eventIndex = this.events.indexOf(eventLabel);
+          if (eventIndex >= 0) {
+            this.events.splice(eventIndex, 1);
+          }
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 }
 
 
@@ -254,6 +313,14 @@ class Action
     return 'actions {'
       + this.action_code
       + '\n}';
+  }
+
+  update(element) {
+    if (element.hasClass("action")) {
+      this.action_code = element.val();
+      return true;
+    }
+    return false;
   }
 }
 
@@ -328,8 +395,42 @@ class Decision
   }
   
   update(element_stack) {
-    console.log("Updating Decision " + this.id + " '" + this.name.name + "'");
-    console.warn("Update of Decisions is not implemented yet.");
+    let top = element_stack.pop();
+    if (top.hasClass("considerations")) {
+      let consideration = element_stack.pop();
+      let match = numberExpression.exec(consideration.attr('id'));
+      let considerationIndex = parseInt(match[0], 10);
+      if (isNaN(considerationIndex)) {
+        return false;
+      }
+      for (let consideration of this.considerations)
+      {
+        if (consideration.id === considerationIndex) {
+          return consideration.update(element_stack);
+        }
+      }
+      console.error("Looking for consideration#" + considerationIndex + " of decision#" + this.id +", but not found");
+      return false;
+    }
+    else if (top.hasClass("events")) {
+      element_stack.push(top);
+      return this.events.update(element_stack);
+    }
+    else if (!element_stack.length) {
+      if (top.hasClass("name")) {
+        return this.name.update(top);
+      }
+      else if (top.hasClass("description")) {
+        return this.description.update(top);
+      }
+      else if (top.hasClass("utility")) {
+        return this.utility.update(top);
+      }
+      else if (top.hasClass("action")) {
+        return this.action.update(top);
+      }
+    }
+    return false;
   }
 }
 
@@ -358,6 +459,26 @@ class Range
   toCpp() {
     return "range(" + this.minRange + ", " + this.maxRange + ")";
   }
+
+  update(element_stack) {
+    if (element_stack.pop().hasClass("range")) {
+      let updateElement = element_stack.pop();
+      if (!element_stack.length) {
+        let newValue = parseFloat(updateElement.val());
+        if (!isNaN(newValue)) {
+          if (updateElement.hasClass("min")) {
+            this.minRange = newValue;
+            return true;
+          }
+          else if (updateElement.hasClass("max")) {
+            this.maxRange = newValue;
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 }
 
 
@@ -371,7 +492,7 @@ class UtilityFunction
   }
 
   toHtml() {
-    return '<textarea placeholder="utility function" class="utilityfunction" rows="10" cols="70" >\n'
+    return '<textarea placeholder="utility function" class="utility_function" rows="10" cols="70" >\n'
       + this.cpp_code
       + '\n</textarea>\n';
   }
@@ -380,6 +501,14 @@ class UtilityFunction
     return "{"
       + this.cpp_code
       + "\n}";
+  }
+
+  update(element) {
+    if (element.hasClass("utility_function")) {
+      this.cpp_code = element.val();
+      return true;
+    }
+    return false;
   }
 }
 
@@ -421,6 +550,28 @@ class Consideration
       + "{\n"
       + this.utilityFunction.toCpp() + "\n"
       + "})";
+  }
+
+  update(element_stack) {
+    console.log(element_stack);
+    let top = element_stack.pop();
+    if (top.hasClass("range")) {
+      if (element_stack.length !== 1) {
+        return false;
+      }
+      element_stack.push(top);
+      return this.range.update(element_stack);
+    }
+    else if (!element_stack.length) {
+      if (top.hasClass("description")) {
+        return this.description.update(top);
+      }
+      else if (top.hasClass("utility_function")) {
+        return this.utilityFunction.update(top);
+      }
+    }
+    console.error("Update is not yet implemented for Transforms");
+    return false;
   }
 }
 
@@ -777,16 +928,21 @@ function readSingleFile(evt)
 function updateOnChange(element, event) {
   console.log("***");
   console.log("Change event triggered.");
-  console.log(event);
-  console.log(element);
   let stack = [$(element)];
-  while (!stack[stack.length - 1].hasClass("decision")) {
+  while (true) {
     let ancestor = stack[stack.length - 1].parent();
-    stack.push(stack[stack.length - 1].parent());
-    if (ancestor.is('html')) {
+    stack.push(ancestor);
+    if (ancestor.hasClass("decision")) {
+      console.log("Stopped because this element is a .decision:");
+      console.log(ancestor);
+      break;
+    }
+    else if (ancestor.is('html')) {
       throw new Error("Malformed HTML document: no element with class='decision' found.");
     }
   }
-  intelligence.update(stack);
   console.log(stack);
+  if (!intelligence.update(stack)) {
+    console.error("The intelligence is not updated correctly!");
+  }
 }
