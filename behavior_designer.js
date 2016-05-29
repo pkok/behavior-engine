@@ -12,6 +12,9 @@
  *   - toCpp(), which generates a string that is a partial C++ expression that
  *     represents this object.
  *   - toHtml(), which generates a HTML representation of this object.
+ *   - update(jQueryElement) or update(arrayOfjQueryElements), which either
+ *     adjusts the value of a type's field to reflect the state of the HTML
+ *     document, or delegates the update to a field's own update() function.
  *
  * NOTE: There is no direct link to the C++ code; any changes in the C++ API
  * will require manual changes in this Javascript library.
@@ -894,6 +897,17 @@ function readSingleFile(evt) {
   }
 }
 
+/**
+ * Given a changed HTML element, update the corresponding Javascript object.
+ *
+ * This function expects to be bound by jQuery on a "change" event of any
+ * select, input or textarea elements in the environment.
+ *
+ * It expects a jQuery representation of the changed HTML element, and the
+ * event.  It builds a stack of parent elements of this HTML element, until
+ * the div.decision element is reached.  The function then makes a call to
+ * the global variable intelligence's update method.
+ */
 function updateOnChange(element, event) {
   console.log("***");
   console.log("Change event triggered.");
