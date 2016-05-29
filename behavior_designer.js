@@ -449,21 +449,16 @@ class Range
     return "range(" + this.minRange + ", " + this.maxRange + ")";
   }
 
-  update(elementStack) {
-    if (elementStack.pop().hasClass("range")) {
-      let updateElement = elementStack.pop();
-      if (!elementStack.length) {
-        let newValue = parseFloat(updateElement.val());
-        if (!isNaN(newValue)) {
-          if (updateElement.hasClass("min")) {
-            this.minRange = newValue;
-            return true;
-          }
-          else if (updateElement.hasClass("max")) {
-            this.maxRange = newValue;
-            return true;
-          }
-        }
+  update(element) {
+    let newValue = parseFloat(element.val());
+    if (!isNaN(newValue)) {
+      if (element.hasClass("min")) {
+        this.minRange = newValue;
+        return true;
+      }
+      else if (element.hasClass("max")) {
+        this.maxRange = newValue;
+        return true;
       }
     }
     return false;
@@ -548,8 +543,13 @@ class Consideration
       if (elementStack.length !== 1) {
         return false;
       }
-      elementStack.push(top);
-      return this.range.update(elementStack);
+      return this.range.update(elementStack[0]) && this.transform.visualization.update();
+    }
+    else if (top.hasClass("transform")) {
+      if (elementStack.length !== 1) {
+        return false;
+      }
+      return this.transform.update(elementStack[0]);
     }
     else if (!elementStack.length) {
       if (top.hasClass("description")) {
@@ -566,16 +566,17 @@ class Consideration
 
 class Visualization
 {
-  constructor(type, decId, conId, range, args) {
+  constructor(transform) {
     this.height = 200;
     this.width = 400;
-    this.type = type;
-    this.decId = decId;
-    this.conId = conId;
-    this.range = range;
-    this.args = args;
-    this.name = "visualisation_" + this.decId + "_"+this.conId;
-
+    this.transform = transform;
+    this.type = this.transform.type;
+    this.decisionId = this.transform.decisionId;
+    this.considerationId = this.transform.considerationId;
+    this.range = this.transform.range;
+    this.args = this.transform.args;
+    
+    this.name = "visualisation_" + this.decisionId + "_" + this.considerationId;
     this.data = [];
   }
 
@@ -687,64 +688,110 @@ class Visualization
     }
   }
 
-  initialize() {
-    this.generateData();
-    let vis = d3.select('#'+this.name),
-      WIDTH = this.width,
-      HEIGHT = this.height,
-      MARGINS = {
-        top: 20,
-        right: 20,
-        bottom: 20,
-        left: 50
-      },
-      xRange = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([d3.min(this.data, function(d) {
-        return d.x;
-      }), d3.max(this.data, function(d) {
-        return d.x;
-      })]),
-      yRange = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([0, 1]),
-      xAxis = d3.svg.axis()
-        .scale(xRange)
-        .tickSize(1)
-        .tickSubdivide(true),
-      yAxis = d3.svg.axis()
-        .scale(yRange)
-        .tickSize(1)
-        .orient('left')
-        .tickSubdivide(true);
+  static get margins() {
+    return {
+      top: 20,
+      right: 20,
+      bottom: 20,
+      left: 50
+    };
+  }
+  
+  xRange() {
+    return d3.scale.linear().range([
+      Visualization.margins.left,
+      this.width - Visualization.margins.right
+    ])
+      .domain([
+        d3.min(this.data, function(d) {
+          return d.x;
+        }),
+        d3.max(this.data, function(d) {
+          return d.x;
+        })]);
+  }
+  
+  xAxis() {
+    return d3.svg.axis()
+      .scale(this.xRange())
+      .tickSize(1)
+      .tickSubdivide(true);
+  }
+  
+  yRange() {
+    return d3.scale.linear().range([
+      this.height - Visualization.margins.top,
+      Visualization.margins.bottom
+    ])
+      .domain([this.range.minRange, this.range.maxRange]);
+  }
 
-    vis.append('svg:g')
-      .attr('class', 'x axis')
-      .attr('transform', 'translate(0,' + (HEIGHT - MARGINS.bottom) + ')')
-      .call(xAxis);
-
-    vis.append('svg:g')
-      .attr('class', 'y axis')
-      .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
-      .call(yAxis);
-
-    let lineFunc = d3.svg.line()
+  yAxis() {
+    return d3.svg.axis()
+      .scale(this.yRange())
+      .tickSize(1)
+      .orient('left')
+      .tickSubdivide(true);
+  }
+  
+  lineFunc() {
+    let that = this;
+    return d3.svg.line()
       .x(function(d) {
-        return xRange(d.x);
+        return that.xRange()(d.x);
       })
       .y(function(d) {
-        return yRange(d.y);
+        return that.yRange()(d.y);
       })
       .interpolate('linear');
+  }
+  
+  initialize() {
+    this.generateData();
+    let vis = d3.select('#' + this.name);
+
+    vis.append('svg:g')
+      .attr('class', 'x-axis')
+      .attr('transform', 'translate(0,' + (this.height - Visualization.margins.bottom) + ')')
+      .call(this.xAxis());
+
+    vis.append('svg:g')
+      .attr('class', 'y-axis')
+      .attr('transform', 'translate(' + Visualization.margins.left + ',0)')
+      .call(this.yAxis());
 
     vis.append('svg:path')
-      .attr('d', lineFunc(this.data))
+      .attr('class', 'path')
+      .attr('d', this.lineFunc()(this.data))
       .attr('stroke', 'blue')
       .attr('stroke-width', 2)
       .attr('fill', 'none');
-
   }
 
   // Should read values from corresponding fields when their values have
   // changed and update the data and axis
   update() {
+    this.type = this.transform.type;
+    this.range = this.transform.range;
+    this.args = this.transform.args;
 
+    let change_time = 750;
+    this.generateData();
+    let vis = d3.select('#' + this.name).transition();
+
+    vis.select(".x-axis")
+      .duration(change_time)
+      .call(this.xAxis());
+
+    vis.select(".y-axis")
+      .duration(change_time)
+      .call(this.yAxis());
+
+    vis.select(".path")
+      .duration(change_time)
+      .attr('d', this.lineFunc()(this.data));
+    
+    return true;
   }
 
   toHtml() {
@@ -758,59 +805,63 @@ class Visualization
   }
 }
 
-// TODO: implement different transformations
+/**
+ * Wrapper for C++'s Transform type.
+ */
 class Transform
 {
   static get valid() {
-    return [
-      {"type": "Binary", "args": ["threshold"]},
-      {"type": "Exponential", "args": ["base"]},
-      {"type": "Identity", "args": []},
-      {"type": "Inverted", "args": []},
-      {"type": "Linear", "args": ["slope", "intercept"]},
-      {"type": "Power", "args": ["power"]}
-    ];
+    return {
+      "Binary": ["threshold"],
+      "Exponential": ["base"],
+      "Identity": [],
+      "Inverted": [],
+      "Linear": ["slope", "intercept"],
+      "Power": ["power"]
+    };
   }
 
   constructor(decId, conId, range, type, args) {
-    let filteredTransforms = Transform.valid.filter(function(element) { return element.type === type; });
-    if (filteredTransforms.length == 0) {
-      throw new Error("Transform '" + this.type + "' does not exist");
+    if (!(type in Transform.valid)) {
+      throw new Error("Transform '" + type + "' does not exist");
     }
-    let arity = filteredTransforms[0].args.length;
+    let arity = Transform.valid[type].length;
     if (args.length !== arity) {
-      throw new Error("Transform '" + this.type + "' should have "
-        + arity + " arguments passed "
+      throw new Error("Transform '" + type + "' should have "
+        + arity + " arguments, but received "
         + args.length + " arguments");
     }
     this.decisionId = decId;
     this.considerationId = conId;
     this.range = range;
-    this.type = filteredTransforms[0].type;
+    this.type = type;
     this.args = args;
 
-    this.visualization = new Visualization(type, decId, conId, this.range, args);
+    this.visualization = new Visualization(this);
+    //this.visualization = new Visualization(this.type, this.decisionId, this.considerationId, this.range, this.args);
   }
 
-  // TODO: Implement a better HTML representation.
   toHtml() {
     let htmlArgs = [];
-    let out = '<select class="transform">\n';
-    for (let transform of Transform.valid) {
+    let out = '<div class="transform">\n'
+      + '<select class="transform-type">\n';
+    for (let transformType in Transform.valid) {
       let htmlArgument = '';
-      if (transform.type === this.type) {
-        out += '<option selected value="' + transform.type + '">' + transform.type + '</option>\n';
-        for (let i = 0; i < transform.args.length; i++) {
+      let transformArgs = Transform.valid[transformType];
+      if (transformType === this.type) {
+        out += '<option selected value="' + transformType + '">' + transformType + '</option>\n';
+        for (let i = 0; i < transformArgs.length; i++) {
           htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-            + '" placeholder="' + transform.args[i]
+            + '" placeholder="' + transformArgs[i]
             + '" value="' + this.args[i] + '"/>\n';
         }
       }
       else {
-        out += '<option value="' + transform.type + '">' + transform.type + '</option>\n';
-        for (let i = 0; i < transform.args.length; i++) {
-          htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-            + '" placeholder="' + transform.args[i] + '"/>\n';
+        out += '<option value="' + transformType + '">' + transformType + '</option>\n';
+        for (let i = 0; i < transformArgs.length; i++) {
+          htmlArgument += '<input type="text" ' 
+            + 'class="transform-argument ' + transformType + ' ' + transformArgs[i] + '" '
+            + 'placeholder="' + transformArgs[i] + '"/>\n';
         }
       }
       htmlArgs.push(htmlArgument);
@@ -818,6 +869,7 @@ class Transform
     out += '</select>\n';
     out += htmlArgs.join('');
     out += this.visualization.toHtml();
+    out += '</div>\n';
 
     return out;
   }
@@ -829,6 +881,44 @@ class Transform
       + this.args.join(", ")
       + ")";
   }
+
+  update(element) {
+    let successful = false;
+    if (element.hasClass("transform-type")) {
+      let type = element.val();
+      if (!(type in Transform.valid)) {
+        throw new Error("Transform '" + this.type + "' does not exist");
+      }
+      let arity = Transform.valid[type].length;
+      this.type = type;
+      this.args = new Array(arity);
+      for (let i = 0; i < Transform.valid[type]; i++) {
+        let argName = Transform.valid[type][i];
+        let argElement = $(element).siblings(".transform-argument + ." + this.type + " + ." + argName);
+        this.args[i] = parseFloat(argElement.val());
+      }
+      successful = true;
+    }
+    else if (element.hasClass("transform-argument")) {
+      if (element.hasClass(this.type)) {
+        for (let i = 0; i < Transform.valid[this.type].length; i++) {
+          let argName = Transform.valid[this.type][i];
+          if (element.hasClass(argName)) {
+            this.args[i] = parseFloat(element.val());
+            successful = true;
+            break;
+          }
+        }
+      }
+    }
+    return successful ? this.visualization.update(this) : false;
+  }
+}
+
+
+function showRelevantTransformArguments(transformTypeTag) {
+  $(transformTypeTag).siblings(".transform-argument").hide();
+  $(transformTypeTag).siblings(".transform-argument + ." + $(transformTypeTag).val()).show();
 }
 
 /** Finds the closing bracket of a given opening bracket.
@@ -877,7 +967,6 @@ function findClosingBracket(text, openPosition, bracketType) {
  * Javascript representation of the set of Decisions.
  */
 function readSingleFile(evt) {
-  //console.log(evt);
   let f = evt.target.files[0];
   if (f) {
     let r = new FileReader();
@@ -886,6 +975,7 @@ function readSingleFile(evt) {
       intelligence = new Intelligence(content);
       let container = $("#intelligence_container");
       container.html(intelligence.toHtml());
+      $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
       //let container = document.getElementById("intelligence_container");
       //container.innerHTML = intelligence.toHtml();
       intelligence.initializeVisualizations();
@@ -916,15 +1006,12 @@ function updateOnChange(element, event) {
     let ancestor = stack[stack.length - 1].parent();
     stack.push(ancestor);
     if (ancestor.hasClass("decision")) {
-      console.log("Stopped because this element is a .decision:");
-      console.log(ancestor);
       break;
     }
     else if (ancestor.is('html')) {
       throw new Error("Malformed HTML document: no element with class='decision' found.");
     }
   }
-  console.log(stack);
   if (!intelligence.update(stack)) {
     console.error("The intelligence is not updated correctly!");
   }
