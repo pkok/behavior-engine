@@ -119,10 +119,15 @@ class Name
   toCpp() {
     return 'name("' + this.name + '")';
   }
+  
+  toLabel(labelClass) {
+    return '<div class="' + labelClass + '">' + this.name + "</div>\n";
+  }
 
   update(element) {
     if (element.hasClass("name")) {
       this.name = element.val();
+      element.parent().prev().text(this.name);
       return true;
     }
     return false;
@@ -146,10 +151,15 @@ class Description
   toCpp() {
     return 'description("' + this.description + '")';
   }
+  
+  toLabel(labelClass) {
+    return '<div class="' + labelClass + '">' + this.description + '</div>\n';
+  }
 
   update(element) {
     if (element.hasClass("description")) {
       this.description = element.val();
+      element.parent().prev(".consideration_label").text(this.description);
       return true;
     }
     return false;
@@ -359,13 +369,14 @@ class Decision
 
   toHtml() {
     let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml(); });
-    return '<div class="decision" id="decision' + this.id + '">\n'
+    return this.name.toLabel("decision_label")
+      + '<div class="decision" id="decision' + this.id + '">\n'
       + this.name.toHtml()
       + this.description.toHtml()
       + this.utility.toHtml()
       + this.events.toHtml()
-      + '<div class="considerations">\n'
       + '<input type="button" value="Add Consideration" class="addConsideration" />'
+      + '<div class="considerations">\n'
       + htmlConsiderations.join("\n")
       + '</div>\n'
       + this.action.toHtml()
@@ -518,7 +529,8 @@ class Consideration
   }
 
   toHtml() {
-    return '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
+    return this.description.toLabel("consideration_label")
+      + '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
       + this.description.toHtml()
       + this.range.toHtml()
       + this.transform.toHtml()
@@ -975,10 +987,30 @@ function readSingleFile(evt) {
       intelligence = new Intelligence(content);
       let container = $("#intelligence_container");
       container.html(intelligence.toHtml());
-      $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
-      //let container = document.getElementById("intelligence_container");
-      //container.innerHTML = intelligence.toHtml();
       intelligence.initializeVisualizations();
+      
+      // Update the displayed graph of a Transform when its type is changed
+      $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
+      // Make each Decision collapsible
+      $(function() {
+        $("#decision_container").accordion({
+          active: false,
+          collapsible: true,
+          header: ".decision_label",
+          heightStyle: "content",
+          icons: false
+        });
+      });
+      // Also, make each Consideration collapsible
+      $(function() {
+        $(".considerations").accordion({
+          active: false,
+          collapsible: true,
+          header: ".consideration_label",
+          heightStyle: "content",
+          icons: false
+        });
+      });
 
     };
     r.readAsText(f);
