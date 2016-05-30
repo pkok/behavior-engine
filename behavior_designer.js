@@ -88,7 +88,7 @@ class Intelligence
 
   update(elementStack) {
     let decision = elementStack.pop();
-    let match = idNumberExpression.exec(decision.attr('id'));
+    let match = idNumberExpression.exec(decision.prop('id'));
     let decisionIndex = parseInt(match[0], 10);
     if (!isNaN(decisionIndex)) {
       for (let decision of this.decisions) {
@@ -99,6 +99,18 @@ class Intelligence
     }
     console.error("Looking for decision#" + decisionIndex + ", but not found");
     return false
+  }
+
+  updateDecisionOrder() {
+    let sortedDecisions = [];
+    for (let decisionElement of $("#decision_container .decision")) {
+      let match = idNumberExpression.exec($(decisionElement).prop("id"));
+      let id = parseInt(match[0], 10);
+      let result = this.decisions.find(function (d) { return d.id === id; });
+      sortedDecisions.push(result);
+    }
+    this.decisions = sortedDecisions;
+    console.log(this.decisions);
   }
 }
 
@@ -119,7 +131,7 @@ class Name
   toCpp() {
     return 'name("' + this.name + '")';
   }
-  
+
   toLabel(labelClass) {
     return '<div class="' + labelClass + '">' + this.name + "</div>\n";
   }
@@ -151,7 +163,7 @@ class Description
   toCpp() {
     return 'description("' + this.description + '")';
   }
-  
+
   toLabel(labelClass) {
     return '<div class="' + labelClass + '">' + this.description + '</div>\n';
   }
@@ -369,7 +381,8 @@ class Decision
 
   toHtml() {
     let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml(); });
-    return this.name.toLabel("decision_label")
+    return '<div class="decision_wrapper">\n'
+      + this.name.toLabel("decision_label", this.id)
       + '<div class="decision" id="decision' + this.id + '">\n'
       + this.name.toHtml()
       + this.description.toHtml()
@@ -380,6 +393,7 @@ class Decision
       + htmlConsiderations.join("\n")
       + '</div>\n'
       + this.action.toHtml()
+      + '</div>\n'
       + '</div>\n';
   }
 
@@ -401,7 +415,7 @@ class Decision
     let top = elementStack.pop();
     if (top.hasClass("considerations")) {
       let consideration = elementStack.pop();
-      let match = idNumberExpression.exec(consideration.attr('id'));
+      let match = idNumberExpression.exec(consideration.prop('id'));
       let considerationIndex = parseInt(match[0], 10);
       if (!isNaN(considerationIndex)) {
         for (let consideration of this.considerations) {
@@ -432,6 +446,17 @@ class Decision
       }
     }
     return false;
+  }
+
+  updateConsiderationOrder() {
+    let sortedConsideration = [];
+    for (let considerationElement of $("#decision" + this.id + " .considerations .consideration")) {
+      let match = idNumberExpression.exec($(considerationElement).prop("id"));
+      let id = parseInt(match[0], 10);
+      let result = this.considerations.find(function (d) { return d.id === id; });
+      sortedConsideration.push(result);
+    }
+    this.considerations = sortedConsideration;
   }
 }
 
@@ -529,12 +554,14 @@ class Consideration
   }
 
   toHtml() {
-    return this.description.toLabel("consideration_label")
+    return '<div class="consideration_wrapper">\n'
+      + this.description.toLabel("consideration_label")
       + '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
       + this.description.toHtml()
       + this.range.toHtml()
       + this.transform.toHtml()
       + this.utilityFunction.toHtml()
+      + '</div>\n'
       + '</div>\n';
   }
 
@@ -587,7 +614,7 @@ class Visualization
     this.considerationId = this.transform.considerationId;
     this.range = this.transform.range;
     this.args = this.transform.args;
-    
+
     this.name = "visualisation_" + this.decisionId + "_" + this.considerationId;
     this.data = [];
   }
@@ -708,7 +735,7 @@ class Visualization
       left: 50
     };
   }
-  
+
   xRange() {
     return d3.scale.linear().range([
       Visualization.margins.left,
@@ -722,14 +749,14 @@ class Visualization
           return d.x;
         })]);
   }
-  
+
   xAxis() {
     return d3.svg.axis()
       .scale(this.xRange())
       .tickSize(1)
       .tickSubdivide(true);
   }
-  
+
   yRange() {
     return d3.scale.linear().range([
       this.height - Visualization.margins.top,
@@ -745,7 +772,7 @@ class Visualization
       .orient('left')
       .tickSubdivide(true);
   }
-  
+
   lineFunc() {
     let that = this;
     return d3.svg.line()
@@ -757,7 +784,7 @@ class Visualization
       })
       .interpolate('linear');
   }
-  
+
   initialize() {
     this.generateData();
     let vis = d3.select('#' + this.name);
@@ -802,7 +829,7 @@ class Visualization
     vis.select(".path")
       .duration(change_time)
       .attr('d', this.lineFunc()(this.data));
-    
+
     return true;
   }
 
@@ -871,7 +898,7 @@ class Transform
       else {
         out += '<option value="' + transformType + '">' + transformType + '</option>\n';
         for (let i = 0; i < transformArgs.length; i++) {
-          htmlArgument += '<input type="text" ' 
+          htmlArgument += '<input type="text" '
             + 'class="transform-argument ' + transformType + ' ' + transformArgs[i] + '" '
             + 'placeholder="' + transformArgs[i] + '"/>\n';
         }
@@ -988,28 +1015,72 @@ function readSingleFile(evt) {
       let container = $("#intelligence_container");
       container.html(intelligence.toHtml());
       intelligence.initializeVisualizations();
-      
+
       // Update the displayed graph of a Transform when its type is changed
       $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
       // Make each Decision collapsible
       $(function() {
-        $("#decision_container").accordion({
-          active: false,
-          collapsible: true,
-          header: ".decision_label",
-          heightStyle: "content",
-          icons: false
+        $("#decision_container .decision_wrapper").each(function(_, element) {
+          $(element).accordion({
+            active: false,
+            collapsible: true,
+            header: ".decision_label",
+            heightStyle: "content",
+            icons: false
+          })
         });
+        $("#decision_container").sortable({
+          axis: "y",
+          start: function (event, ui) {
+            ui.item.accordion("disable");
+          },
+          stop: function (event, ui) {
+            // For IE.
+            ui.item.children("h3").triggerHandler("focusout");
+            // Prevent accordion to open after the sort has stopped.
+            window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
+          },
+          update: function (event, ui) {
+            intelligence.updateDecisionOrder();
+          }
+        });
+        $(".decision_label").disableSelection();
       });
+ 
       // Also, make each Consideration collapsible
       $(function() {
-        $(".considerations").accordion({
-          active: false,
-          collapsible: true,
-          header: ".consideration_label",
-          heightStyle: "content",
-          icons: false
+        $(".considerations .consideration_wrapper").each(function (_, element) {
+          $(element).accordion({
+            active: false,
+            collapsible: true,
+            header: ".consideration_label",
+            heightStyle: "content",
+            icons: false
+          });
         });
+        $(".considerations").each(function (_, element) {
+          $(element).sortable({
+            axis: "y",
+            start: function (event, ui) {
+              ui.item.accordion("disable");
+            },
+            stop: function (event, ui) {
+              // For IE.
+              ui.item.children("h3").triggerHandler("focusout");
+              // Prevent accordion to open after the sort has stopped.
+              window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
+            },
+            update: function (event, ui) {
+              let htmlConsideration = ui.item.children(".consideration");
+              let htmlId = htmlConsideration.prop("id");
+              let decisionId = parseInt(/\d+/.exec(htmlId)[0], 10);
+              console.log("id: " + decisionId);
+              let d = intelligence.decisions.find(function (d) { return d.id === decisionId; });
+              d.updateConsiderationOrder();
+            }
+          });
+        });
+        $(".consideration_label").disableSelection();
       });
 
     };
