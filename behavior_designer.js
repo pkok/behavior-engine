@@ -106,11 +106,22 @@ class Intelligence
     for (let decisionElement of $("#decision_container .decision")) {
       let match = idNumberExpression.exec($(decisionElement).prop("id"));
       let id = parseInt(match[0], 10);
-      let result = this.decisions.find(function (d) { return d.id === id; });
-      sortedDecisions.push(result);
+      sortedDecisions.push(this.getDecisionById(id));
     }
     this.decisions = sortedDecisions;
     console.log(this.decisions);
+  }
+  
+  getDecisionById(decisionId) {
+    return this.decisions.find(function (d) { return d.id === decisionId; });
+  }
+  
+  getDecisionIndexById(decisionId) {
+    return this.decisions.findIndex(function (d) { return d.id === decisionId; });
+  }
+  
+  removeDecision(decisionId) {
+    return this.decisions.splice(this.getDecisionIndexById(decisionId), 1);
   }
 }
 
@@ -132,14 +143,10 @@ class Name
     return 'name("' + this.name + '")';
   }
 
-  toLabel(labelClass) {
-    return '<div class="' + labelClass + '">' + this.name + "</div>\n";
-  }
-
   update(element) {
     if (element.hasClass("name")) {
       this.name = element.val();
-      element.parent().prev().text(this.name);
+      element.parent().prev(".decision_label").children(".content").text(this.name);
       return true;
     }
     return false;
@@ -164,14 +171,10 @@ class Description
     return 'description("' + this.description + '")';
   }
 
-  toLabel(labelClass) {
-    return '<div class="' + labelClass + '">' + this.description + '</div>\n';
-  }
-
   update(element) {
     if (element.hasClass("description")) {
       this.description = element.val();
-      element.parent().prev(".consideration_label").text(this.description);
+      element.parent().prev(".consideration_label").children(".content").text(this.description);
       return true;
     }
     return false;
@@ -382,7 +385,7 @@ class Decision
   toHtml() {
     let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml(); });
     return '<div class="decision_wrapper">\n'
-      + this.name.toLabel("decision_label", this.id)
+      + createLabel(this.name.name, "decision_label")
       + '<div class="decision" id="decision' + this.id + '">\n'
       + this.name.toHtml()
       + this.description.toHtml()
@@ -453,10 +456,22 @@ class Decision
     for (let considerationElement of $("#decision" + this.id + " .considerations .consideration")) {
       let match = idNumberExpression.exec($(considerationElement).prop("id"));
       let id = parseInt(match[0], 10);
-      let result = this.considerations.find(function (d) { return d.id === id; });
+      let result = this.getConsiderationById(id);
       sortedConsideration.push(result);
     }
     this.considerations = sortedConsideration;
+  }
+
+  getConsiderationById(considerationId) {
+    return this.considerations.find(function (c) { return c.id === considerationId; });
+  }
+  
+  getConsiderationIndexById(considerationId) {
+    return this.considerations.findIndex(function (c) { return c.id === considerationId; });
+  }
+  
+  removeConsideration(considerationId) {
+    return this.considerations.splice(this.getConsiderationIndexById(considerationId), 1);
   }
 }
 
@@ -555,7 +570,7 @@ class Consideration
 
   toHtml() {
     return '<div class="consideration_wrapper">\n'
-      + this.description.toLabel("consideration_label")
+      + createLabel(this.description.description, "consideration_label")
       + '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
       + this.description.toHtml()
       + this.range.toHtml()
@@ -960,6 +975,13 @@ function showRelevantTransformArguments(transformTypeTag) {
   $(transformTypeTag).siblings(".transform-argument + ." + $(transformTypeTag).val()).show();
 }
 
+function createLabel(content, labelClass) {
+  if (labelClass === undefined) {
+    labelClass = 'label';
+  }
+  return '<div class="' + labelClass + '"><span class="content">' + content + '</span> <span class="label-cross">\u274C</span></div>\n';
+}
+
 /** Finds the closing bracket of a given opening bracket.
  *
  * This is used to help parsing C++ code.
@@ -1018,18 +1040,59 @@ function readSingleFile(evt) {
 
       // Update the displayed graph of a Transform when its type is changed
       $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
+
       // Make each Decision collapsible
-      $(function() {
-        $("#decision_container .decision_wrapper").each(function(_, element) {
-          $(element).accordion({
-            active: false,
-            collapsible: true,
-            header: ".decision_label",
-            heightStyle: "content",
-            icons: false
-          })
+      $("#decision_container .decision_wrapper").each(function(_, element) {
+        $(element).accordion({
+          active: false,
+          collapsible: true,
+          header: ".decision_label",
+          heightStyle: "content",
+          icons: false
+        })
+      });
+      $("#decision_container").sortable({
+        axis: "y",
+        start: function (event, ui) {
+          ui.item.accordion("disable");
+        },
+        stop: function (event, ui) {
+          // For IE.
+          ui.item.children("h3").triggerHandler("focusout");
+          // Prevent accordion to open after the sort has stopped.
+          window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
+        },
+        update: function (event, ui) {
+          intelligence.updateDecisionOrder();
+        }
+      });
+      $(".decision_label").disableSelection();
+      
+      // Remove a Decision when clicking on the cross
+      $(".decision_label .label-cross").click(function () {
+        // Select the decision to remove
+        let match = idNumberExpression.exec($(this).parent().next().prop("id"));
+        let decisionId = parseInt(match[0], 10);
+        intelligence.removeDecision(decisionId);
+        // And make it go away on screen as well
+        let duration = 400;
+        let decision = $(this).parent().parent();
+        decision.animate({height: "0px"}, duration);
+        window.setTimeout(function () { decision.remove(); }, duration);
+      });
+
+      // Also, make each Consideration collapsible
+      $(".considerations .consideration_wrapper").each(function (_, element) {
+        $(element).accordion({
+          active: false,
+          collapsible: true,
+          header: ".consideration_label",
+          heightStyle: "content",
+          icons: false
         });
-        $("#decision_container").sortable({
+      });
+      $(".considerations").each(function (_, element) {
+        $(element).sortable({
           axis: "y",
           start: function (event, ui) {
             ui.item.accordion("disable");
@@ -1041,48 +1104,32 @@ function readSingleFile(evt) {
             window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
           },
           update: function (event, ui) {
-            intelligence.updateDecisionOrder();
+            let htmlConsideration = ui.item.children(".consideration");
+            let htmlId = htmlConsideration.prop("id");
+            let decisionId = parseInt(/\d+/.exec(htmlId)[0], 10);
+            console.log("id: " + decisionId);
+            intelligence.getDecisionById(decisionId).updateConsiderationOrder();
           }
         });
-        $(".decision_label").disableSelection();
       });
- 
-      // Also, make each Consideration collapsible
-      $(function() {
-        $(".considerations .consideration_wrapper").each(function (_, element) {
-          $(element).accordion({
-            active: false,
-            collapsible: true,
-            header: ".consideration_label",
-            heightStyle: "content",
-            icons: false
-          });
-        });
-        $(".considerations").each(function (_, element) {
-          $(element).sortable({
-            axis: "y",
-            start: function (event, ui) {
-              ui.item.accordion("disable");
-            },
-            stop: function (event, ui) {
-              // For IE.
-              ui.item.children("h3").triggerHandler("focusout");
-              // Prevent accordion to open after the sort has stopped.
-              window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
-            },
-            update: function (event, ui) {
-              let htmlConsideration = ui.item.children(".consideration");
-              let htmlId = htmlConsideration.prop("id");
-              let decisionId = parseInt(/\d+/.exec(htmlId)[0], 10);
-              console.log("id: " + decisionId);
-              let d = intelligence.decisions.find(function (d) { return d.id === decisionId; });
-              d.updateConsiderationOrder();
-            }
-          });
-        });
-        $(".consideration_label").disableSelection();
-      });
+      $(".consideration_label").disableSelection();
 
+      // Remove a Consideration when clicking on the cross
+      $(".consideration_label .label-cross").click(function() {
+        console.log("cross clicked");
+        // Select the consideration to remove
+        let match = idNumberExpression.exec($(this).parent().next().prop("id"));
+        let considerationId = parseInt(match[0], 10);
+        match = idNumberExpression.exec($(this).closest(".decision").prop("id"));
+        let decisionId = parseInt(match[0], 10);
+        console.log(decisionId);
+        intelligence.getDecisionById(decisionId).removeConsideration(considerationId);
+        // And make it go away on the screen as well
+        let duration = 400;
+        let consideration = $(this).parent().parent();
+        consideration.animate({height: "0px"}, duration);
+        window.setTimeout(function () { consideration.remove(); }, duration);
+      });
     };
     r.readAsText(f);
   } else {
