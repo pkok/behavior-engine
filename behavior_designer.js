@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 /**
  * This library provides a graphical editor and viewer for this C++
@@ -24,7 +24,7 @@
 // Decision expressions
 const idNumberExpression        = /\d+\s*$/;
 const decisionExpression        = /addDecision\(/g;
-const nameExpression            = /name\(\s*"(.*)"\s*\)/;
+const nameExpression            = /name\(\s*['"](.*)['"]\s*\)/;
 const utilityExpression         = /UtilityScore::(.*),/;
 const eventsExpression          = /events\s*\{\s*Event::(.*?)\s*(?:,\s*Event::(.*?)\s*)?\}\s*,/;
 const actionExpression          = /actions \{\n([\s\S]*)\n\s*}/;
@@ -36,7 +36,7 @@ const transformExpression       = /Transform::\s*(\S*?)\s*\((.*?)(?:,(.*?))*\)/;
 const inputExpression           = /Transform::.*?\(.*?\), \{/;
 
 // Shared expressions
-const descriptionExpression     = /description\(\s*"(.*)"\s*\)/;
+const descriptionExpression     = /description\(\s*['"](.*)['"]\s*\)/;
 
 var intelligence = null;
 
@@ -51,7 +51,7 @@ class Intelligence
     let id = 0;
     while (match !== null) {
       let startPos = match.index + match[0].length-1;
-      let endPos = findClosingBracket(intelligenceText, startPos, "normal");
+      let endPos = findClosingBracket(intelligenceText, startPos, 'normal');
 
       if (endPos !== -1) {
         let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
@@ -69,7 +69,7 @@ class Intelligence
   }
 
   toHtml() {
-    let out = $('<div>').prop("id", "decision_container");
+    let out = $('<div>').prop('id', 'decision_container');
     for (let decision of this.decisions) {
       out.append(decision.toHtml());
     }
@@ -77,10 +77,10 @@ class Intelligence
   }
 
   toCpp() {
-    let out = "";
+    let out = '';
     for (let decision of this.decisions) {
       out += decision.toCpp()
-        + "\n";
+        + '\n';
     }
     return out;
   }
@@ -96,14 +96,14 @@ class Intelligence
         }
       }
     }
-    console.error("Looking for decision#" + decisionIndex + ", but not found");
+    console.error('Looking for decision#' + decisionIndex + ', but not found');
     return false
   }
 
   updateDecisionOrder() {
     let sortedDecisions = [];
-    for (let decisionElement of $("#decision_container .decision")) {
-      let match = idNumberExpression.exec($(decisionElement).prop("id"));
+    for (let decisionElement of $('#decision_container .decision')) {
+      let match = idNumberExpression.exec($(decisionElement).prop('id'));
       let id = parseInt(match[0], 10);
       sortedDecisions.push(this.getDecisionById(id));
     }
@@ -147,9 +147,9 @@ class Name
   }
 
   update(element) {
-    if (element.hasClass("name")) {
+    if (element.hasClass('name')) {
       this.name = element.val();
-      element.parent().prev(".decision_label").children(".content").text(this.name);
+      element.parent().prev('.decision_label').children('.content').text(this.name);
       return true;
     }
     return false;
@@ -180,9 +180,9 @@ class Description
   }
 
   update(element) {
-    if (element.hasClass("description")) {
+    if (element.hasClass('description')) {
       this.description = element.val();
-      element.parent().prev(".consideration_label").children(".content").text(this.description);
+      element.parent().prev('.consideration_label').children('.content').text(this.description);
       return true;
     }
     return false;
@@ -199,17 +199,17 @@ class UtilityScore
 {
   static get valid() {
     return [
-      "Ignore",
-      "SlightlyUseful",
-      "Useful",
-      "VeryUseful",
-      "MostUseful"
+      'Ignore',
+      'SlightlyUseful',
+      'Useful',
+      'VeryUseful',
+      'MostUseful'
     ];
   }
 
   constructor(scoreLabel) {
     if (UtilityScore.valid.indexOf(scoreLabel) === -1) {
-      throw new Error("'" + scoreLabel  + "' is not a valid UtilityScore");
+      throw new Error('"' + scoreLabel  + '" is not a valid UtilityScore');
     }
     this.score = scoreLabel;
   }
@@ -228,14 +228,14 @@ class UtilityScore
   }
   
   toCpp() {
-    return "UtilityScore::" + this.score;
+    return 'UtilityScore::' + this.score;
   }
 
   update(element) {
-    if (element.hasClass("utility")) {
+    if (element.hasClass('utility')) {
       let newScore = element.val();
       if (UtilityScore.valid.indexOf(newScore) === -1) {
-        throw new Error("'" + newScore + "' is not a valid UtilityScore");
+        throw new Error('"' + newScore + '" is not a valid UtilityScore');
       }
       this.score = newScore;
       return true;
@@ -257,15 +257,15 @@ class Events
 {
   static get valid() {
     return [
-      "Always",
-      "Ignore"
+      'Always',
+      'Ignore'
     ];
   }
 
   constructor(eventLabels) {
     for (let eventLabel of eventLabels) {
       if (Events.valid.indexOf(eventLabel) === -1) {
-        throw new Error("'" + eventLabel + "' is not a valid Event");
+        throw new Error('"' + eventLabel + '" is not a valid Event');
       }
     }
     this.events = eventLabels;
@@ -284,22 +284,22 @@ class Events
   }
 
   toCpp() {
-    let cppEvents = this.events.map(function(x){ return "Event::" + x; });
-    return "events {"
-      + cppEvents.join(", ")
-      + "}";
+    let cppEvents = this.events.map(function(x){ return 'Event::' + x; });
+    return 'events {'
+      + cppEvents.join(', ')
+      + '}';
   }
 
   update(elementStack) {
-    if (elementStack.pop().hasClass("events")) {
+    if (elementStack.pop().hasClass('events')) {
       elementStack.pop(); // LI element
       let checkbox = elementStack.pop();
       if (!elementStack.length) {
         let eventLabel = checkbox.val();
         if (Events.valid.indexOf(eventLabel) === -1) {
-          throw new Error("'" + eventLabel + "' is not a valid Event");
+          throw new Error('"' + eventLabel + '" is not a valid Event');
         }
-        if (checkbox.prop("checked")) {
+        if (checkbox.prop('checked')) {
           if (this.events.indexOf(eventLabel) === -1) {
             this.events.push(eventLabel);
           }
@@ -345,7 +345,7 @@ class Action
   }
 
   update(element) {
-    if (element.hasClass("action")) {
+    if (element.hasClass('action')) {
       this.cppCode = element.val();
       return true;
     }
@@ -376,7 +376,7 @@ class Decision
     let match = considerationExpression.exec(decisionText);
     while (match !== null) {
       let startPos = match.index + match[0].length - 1;
-      let endPos = findClosingBracket(decisionText, startPos, "normal");
+      let endPos = findClosingBracket(decisionText, startPos, 'normal');
       let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
 
       let theConsideration = new Consideration(this.id, conId++, considerationText);
@@ -419,21 +419,21 @@ class Decision
 
   toCpp() {
     let cppConsiderations = this.considerations.map(function(x){ return x.toCpp(); });
-    return "addDecision(\n"
-      + this.name.toCpp() + ",\n"
-      + this.description.toCpp() + ",\n"
-      + this.utility.toCpp() + ",\n"
-      + this.events.toCpp() + ",\n"
-      + "considerations {\n"
-      + cppConsiderations.join(",\n")
-      + "},\n"
+    return 'addDecision(\n'
+      + this.name.toCpp() + ',\n'
+      + this.description.toCpp() + ',\n'
+      + this.utility.toCpp() + ',\n'
+      + this.events.toCpp() + ',\n'
+      + 'considerations {\n'
+      + cppConsiderations.join(',\n')
+      + '},\n'
       + this.action.toCpp()
-      + ");\n";
+      + ');\n';
   }
 
   update(elementStack) {
     let top = elementStack.pop();
-    if (top.hasClass("considerations")) {
+    if (top.hasClass('considerations')) {
       let consideration = elementStack.pop();
       let match = idNumberExpression.exec(consideration.prop('id'));
       let considerationIndex = parseInt(match[0], 10);
@@ -444,24 +444,24 @@ class Decision
           }
         }
       }
-      console.error("Looking for consideration#" + considerationIndex + " of decision#" + this.id + ", but not found");
+      console.error('Looking for consideration#' + considerationIndex + ' of decision#' + this.id + ', but not found');
       return false;
     }
-    else if (top.hasClass("events")) {
+    else if (top.hasClass('events')) {
       elementStack.push(top);
       return this.events.update(elementStack);
     }
     else if (!elementStack.length) {
-      if (top.hasClass("name")) {
+      if (top.hasClass('name')) {
         return this.name.update(top);
       }
-      else if (top.hasClass("description")) {
+      else if (top.hasClass('description')) {
         return this.description.update(top);
       }
-      else if (top.hasClass("utility")) {
+      else if (top.hasClass('utility')) {
         return this.utility.update(top);
       }
-      else if (top.hasClass("action")) {
+      else if (top.hasClass('action')) {
         return this.action.update(top);
       }
     }
@@ -470,8 +470,8 @@ class Decision
 
   updateConsiderationOrder() {
     let sortedConsideration = [];
-    for (let considerationElement of $("#decision_" + this.id + " .considerations .consideration")) {
-      let match = idNumberExpression.exec($(considerationElement).prop("id"));
+    for (let considerationElement of $('#decision_' + this.id + ' .considerations .consideration')) {
+      let match = idNumberExpression.exec($(considerationElement).prop('id'));
       let id = parseInt(match[0], 10);
       let result = this.getConsiderationById(id);
       sortedConsideration.push(result);
@@ -500,7 +500,7 @@ class Range
 {
   constructor(regexRangeMatch) {
     if (regexRangeMatch.length !== 3) {
-      throw new Error("Range needs 2 arguments");
+      throw new Error('Range needs 2 arguments');
     }
     this.minRange = parseFloat(regexRangeMatch[1]);
     this.maxRange = parseFloat(regexRangeMatch[2]);
@@ -523,17 +523,17 @@ class Range
   }
   
   toCpp() {
-    return "range(" + this.minRange + ", " + this.maxRange + ")";
+    return 'range(' + this.minRange + ', ' + this.maxRange + ')';
   }
 
   update(element) {
     let newValue = parseFloat(element.val());
     if (!isNaN(newValue)) {
-      if (element.hasClass("min")) {
+      if (element.hasClass('min')) {
         this.minRange = newValue;
         return true;
       }
-      else if (element.hasClass("max")) {
+      else if (element.hasClass('max')) {
         this.maxRange = newValue;
         return true;
       }
@@ -563,13 +563,13 @@ class UtilityFunction
   }
 
   toCpp() {
-    return "{"
+    return '{'
       + this.cppCode
-      + "\n}";
+      + '\n}';
   }
 
   update(element) {
-    if (element.hasClass("utility_function")) {
+    if (element.hasClass('utility_function')) {
       this.cppCode = element.val();
       return true;
     }
@@ -588,7 +588,7 @@ class Consideration
     let transformText = transformExpression.exec(considerationText).filter(Boolean);
     let transformInputStart = inputExpression.exec(considerationText);
     let inputStartPos = transformInputStart.index+transformInputStart[0].length;
-    let inputEndPos = findClosingBracket(considerationText, inputStartPos, "curly");
+    let inputEndPos = findClosingBracket(considerationText, inputStartPos, 'curly');
 
     this.id = id;
     this.decisionId = decId;
@@ -615,37 +615,37 @@ class Consideration
 
   toCpp() {
     return 'consideration(\n'
-      + this.description.toCpp() + ",\n"
-      + this.range.toCpp() + ",\n"
-      + this.transform.toCpp() + ",\n"
-      + "{\n"
-      + this.utilityFunction.toCpp() + "\n"
-      + "})";
+      + this.description.toCpp() + ',\n'
+      + this.range.toCpp() + ',\n'
+      + this.transform.toCpp() + ',\n'
+      + '{\n'
+      + this.utilityFunction.toCpp() + '\n'
+      + '})';
   }
 
   update(elementStack) {
     let top = elementStack.pop();
-    if (top.hasClass("range")) {
+    if (top.hasClass('range')) {
       if (elementStack.length !== 1) {
         return false;
       }
       return this.range.update(elementStack[0]) && this.transform.visualization.update();
     }
-    else if (top.hasClass("transform")) {
+    else if (top.hasClass('transform')) {
       if (elementStack.length !== 1) {
         return false;
       }
       return this.transform.update(elementStack[0]);
     }
     else if (!elementStack.length) {
-      if (top.hasClass("description")) {
+      if (top.hasClass('description')) {
         return this.description.update(top);
       }
-      else if (top.hasClass("utility_function")) {
+      else if (top.hasClass('utility_function')) {
         return this.utilityFunction.update(top);
       }
     }
-    console.error("Update is not yet implemented for Transforms");
+    console.error('Update is not yet implemented for Transforms');
     return false;
   }
 }
@@ -662,7 +662,7 @@ class Visualization
     this.range = this.transform.range;
     this.args = this.transform.args;
 
-    this.name = "visualisation_" + this.decisionId + "_" + this.considerationId;
+    this.name = 'visualisation_' + this.decisionId + '_' + this.considerationId;
     this.data = [];
   }
 
@@ -681,7 +681,7 @@ class Visualization
     let max = this.range.maxRange;
     let step = (max-min)/100.0;
     switch(this.type) {
-      case "Binary":
+      case 'Binary':
         let threshold = parseFloat(this.args[0]);
         for (let i = min; i < max; i += step) {
           let val = 0.0;
@@ -690,7 +690,7 @@ class Visualization
         }
         break;
 
-      case "Exponential":
+      case 'Exponential':
         let base = parseFloat(this.args[0]);
         for (let i = min; i < max; i += step) {
           // scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
@@ -699,19 +699,19 @@ class Visualization
         }
         break;
 
-      case "Identity":
+      case 'Identity':
         for (let i = min; i < max; i += step) {
           this.data.push({x: i , y: this.scale(i, min, max)});
         }
         break;
 
-      case "Inverted":
+      case 'Inverted':
         for (let i = min; i < max; i += step) {
           this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
         }
         break;
 
-      case "Linear":
+      case 'Linear':
         /*
         let slope = parseFloat(this.args[0]);
         let intercept = parseFloat(this.args[1]);
@@ -724,7 +724,7 @@ class Visualization
         });
         break;
         */
-      case "Power":
+      case 'Power':
 
         break;
     }
@@ -865,15 +865,15 @@ class Visualization
     this.generateData();
     let vis = d3.select('#' + this.name).transition();
 
-    vis.select(".x-axis")
+    vis.select('.x-axis')
       .duration(change_time)
       .call(this.xAxis());
 
-    vis.select(".y-axis")
+    vis.select('.y-axis')
       .duration(change_time)
       .call(this.yAxis());
 
-    vis.select(".path")
+    vis.select('.path')
       .duration(change_time)
       .attr('d', this.lineFunc()(this.data));
 
@@ -902,24 +902,24 @@ class Transform
 {
   static get valid() {
     return {
-      "Binary": ["threshold"],
-      "Exponential": ["base"],
-      "Identity": [],
-      "Inverted": [],
-      "Linear": ["slope", "intercept"],
-      "Power": ["power"]
+      'Binary': ['threshold'],
+      'Exponential': ['base'],
+      'Identity': [],
+      'Inverted': [],
+      'Linear': ['slope', 'intercept'],
+      'Power': ['power']
     };
   }
 
   constructor(decId, conId, range, type, args) {
     if (!(type in Transform.valid)) {
-      throw new Error("Transform '" + type + "' does not exist");
+      throw new Error('Transform "' + type + '" does not exist');
     }
     let arity = Transform.valid[type].length;
     if (args.length !== arity) {
-      throw new Error("Transform '" + type + "' should have "
-        + arity + " arguments, but received "
-        + args.length + " arguments");
+      throw new Error('Transform "' + type + '" should have '
+        + arity + ' arguments, but received '
+        + args.length + ' arguments');
     }
     this.decisionId = decId;
     this.considerationId = conId;
@@ -960,31 +960,31 @@ class Transform
   }
 
   toCpp() {
-    return "Transform::"
+    return 'Transform::'
       + this.type
-      + "("
-      + this.args.join(", ")
-      + ")";
+      + '('
+      + this.args.join(', ')
+      + ')';
   }
 
   update(element) {
     let successful = false;
-    if (element.hasClass("transform-type")) {
+    if (element.hasClass('transform-type')) {
       let type = element.val();
       if (!(type in Transform.valid)) {
-        throw new Error("Transform '" + this.type + "' does not exist");
+        throw new Error('Transform "' + this.type + '" does not exist');
       }
       let arity = Transform.valid[type].length;
       this.type = type;
       this.args = new Array(arity);
       for (let i = 0; i < Transform.valid[type]; i++) {
         let argName = Transform.valid[type][i];
-        let argElement = $(element).siblings(".transform-argument + ." + this.type + " + ." + argName);
+        let argElement = $(element).siblings('.transform-argument + .' + this.type + ' + .' + argName);
         this.args[i] = parseFloat(argElement.val());
       }
       successful = true;
     }
-    else if (element.hasClass("transform-argument")) {
+    else if (element.hasClass('transform-argument')) {
       if (element.hasClass(this.type)) {
         for (let i = 0; i < Transform.valid[this.type].length; i++) {
           let argName = Transform.valid[this.type][i];
@@ -1002,8 +1002,8 @@ class Transform
 
 
 function showRelevantTransformArguments(transformTypeTag) {
-  $(transformTypeTag).siblings(".transform-argument").hide();
-  $(transformTypeTag).siblings(".transform-argument + ." + $(transformTypeTag).val()).show();
+  $(transformTypeTag).siblings('.transform-argument').hide();
+  $(transformTypeTag).siblings('.transform-argument + .' + $(transformTypeTag).val()).show();
 }
 
 function createLabel(content, labelClass) {
@@ -1026,17 +1026,17 @@ function findClosingBracket(text, openPosition, bracketType) {
   let count = 1;
   let pos = openPosition + 1;
 
-  let o = "(";
-  let c = ")";
-  if (bracketType === "curly") {
-    o = "{";
-    c = "}";
+  let o = '(';
+  let c = ')';
+  if (bracketType === 'curly') {
+    o = '{';
+    c = '}';
   }
   while (count !== 0 && pos < text.length) {
     let char = text[pos];
     switch (char) {
-      case "\"":
-        if (text[pos-1] !== "\\")
+      case '\"':
+        if (text[pos-1] !== '\\')
           inString = !inString;
         break;
       case o:
@@ -1073,98 +1073,98 @@ function readSingleFile(evt) {
       intelligence.initializeVisualizations();
 
       // Update the displayed graph of a Transform when its type is changed
-      $(".transform-type").each(function (_, element) { showRelevantTransformArguments(element); });
+      $('.transform-type').each(function (_, element) { showRelevantTransformArguments(element); });
 
       // Make each Decision collapsible
-      $("#decision_container .decision_wrapper").each(function(_, element) {
+      $('#decision_container .decision_wrapper').each(function(_, element) {
         $(element).accordion({
           active: false,
           collapsible: true,
-          header: ".decision_label",
-          heightStyle: "content",
+          header: '.decision_label',
+          heightStyle: 'content',
           icons: false
         })
       });
-      $("#decision_container").sortable({
-        axis: "y",
+      $('#decision_container').sortable({
+        axis: 'y',
         start: function (event, ui) {
-          ui.item.accordion("disable");
+          ui.item.accordion('disable');
         },
         stop: function (event, ui) {
           // For IE.
-          ui.item.children("h3").triggerHandler("focusout");
+          ui.item.children('h3').triggerHandler('focusout');
           // Prevent accordion to open after the sort has stopped.
-          window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
+          window.setTimeout(function () { ui.item.accordion('enable'); }, 30);
         },
         update: function (event, ui) {
           intelligence.updateDecisionOrder();
         }
       });
-      $(".decision_label").disableSelection();
+      $('.decision_label').disableSelection();
       
       // Remove a Decision when clicking on the cross
-      $(".decision_label .label-cross").click(function () {
+      $('.decision_label .label-cross').click(function () {
         // Select the decision to remove
-        let match = idNumberExpression.exec($(this).parent().next().prop("id"));
+        let match = idNumberExpression.exec($(this).parent().next().prop('id'));
         let decisionId = parseInt(match[0], 10);
         intelligence.removeDecision(decisionId);
         // And make it go away on screen as well
         let duration = 400;
         let decision = $(this).parent().parent();
-        decision.animate({height: "0px"}, duration);
+        decision.animate({height: '0px'}, duration);
         window.setTimeout(function () { decision.remove(); }, duration);
       });
 
       // Also, make each Consideration collapsible
-      $(".considerations .consideration_wrapper").each(function (_, element) {
+      $('.considerations .consideration_wrapper').each(function (_, element) {
         $(element).accordion({
           active: false,
           collapsible: true,
-          header: ".consideration_label",
-          heightStyle: "content",
+          header: '.consideration_label',
+          heightStyle: 'content',
           icons: false
         });
       });
-      $(".considerations").each(function (_, element) {
+      $('.considerations').each(function (_, element) {
         $(element).sortable({
-          axis: "y",
+          axis: 'y',
           start: function (event, ui) {
-            ui.item.accordion("disable");
+            ui.item.accordion('disable');
           },
           stop: function (event, ui) {
             // For IE.
-            ui.item.children("h3").triggerHandler("focusout");
+            ui.item.children('h3').triggerHandler('focusout');
             // Prevent accordion to open after the sort has stopped.
-            window.setTimeout(function () { ui.item.accordion("enable"); }, 30);
+            window.setTimeout(function () { ui.item.accordion('enable'); }, 30);
           },
           update: function (event, ui) {
-            let htmlConsideration = ui.item.children(".consideration");
-            let htmlId = htmlConsideration.prop("id");
+            let htmlConsideration = ui.item.children('.consideration');
+            let htmlId = htmlConsideration.prop('id');
             let decisionId = parseInt(/\d+/.exec(htmlId)[0], 10);
             intelligence.getDecisionById(decisionId).updateConsiderationOrder();
           }
         });
       });
-      $(".consideration_label").disableSelection();
+      $('.consideration_label').disableSelection();
 
       // Remove a Consideration when clicking on the cross
-      $(".consideration_label .label-cross").click(function() {
+      $('.consideration_label .label-cross').click(function() {
         // Select the consideration to remove
-        let match = idNumberExpression.exec($(this).parent().next().prop("id"));
+        let match = idNumberExpression.exec($(this).parent().next().prop('id'));
         let considerationId = parseInt(match[0], 10);
-        match = idNumberExpression.exec($(this).closest(".decision").prop("id"));
+        match = idNumberExpression.exec($(this).closest('.decision').prop('id'));
         let decisionId = parseInt(match[0], 10);
         intelligence.getDecisionById(decisionId).removeConsideration(considerationId);
         // And make it go away on the screen as well
         let duration = 400;
         let consideration = $(this).parent().parent();
-        consideration.animate({height: "0px"}, duration);
+        consideration.animate({height: '0px'}, duration);
         window.setTimeout(function () { consideration.remove(); }, duration);
       });
     };
     r.readAsText(f);
   } else {
-    console.error("Failed to load file");
+    console.error('Failed to load file');
   }
 }
 
@@ -1184,14 +1184,14 @@ function updateOnChange(element, event) {
   while (true) {
     let ancestor = stack[stack.length - 1].parent();
     stack.push(ancestor);
-    if (ancestor.hasClass("decision")) {
+    if (ancestor.hasClass('decision')) {
       break;
     }
     else if (ancestor.is('html')) {
-      throw new Error("Malformed HTML document: no element with class='decision' found.");
+      throw new Error('Malformed HTML document: no element with class="decision" found.');
     }
   }
   if (!intelligence.update(stack)) {
-    console.error("The intelligence is not updated correctly!");
+    console.error('The intelligence is not updated correctly!');
   }
 }
