@@ -49,11 +49,11 @@ class Intelligence
     // Parse file
     let match = decisionExpression.exec(intelligenceText);
     let id = 0;
-    while (match != null) {
+    while (match !== null) {
       let startPos = match.index + match[0].length-1;
       let endPos = findClosingBracket(intelligenceText, startPos, "normal");
 
-      if (endPos != -1) {
+      if (endPos !== -1) {
         let decisionText = intelligenceText.substr(startPos, endPos - startPos + 1);
         let theDecision = new Decision(id++, decisionText);
         this.decisions.push(theDecision);
@@ -69,11 +69,10 @@ class Intelligence
   }
 
   toHtml() {
-    let out = '<div id="decision_container">';
+    let out = $('<div>').prop("id", "decision_container");
     for (let decision of this.decisions) {
-      out += decision.toHtml();
+      out.append(decision.toHtml());
     }
-    out += '</div>';
     return out;
   }
 
@@ -109,7 +108,6 @@ class Intelligence
       sortedDecisions.push(this.getDecisionById(id));
     }
     this.decisions = sortedDecisions;
-    console.log(this.decisions);
   }
   
   getDecisionById(decisionId) {
@@ -136,7 +134,12 @@ class Name
   }
 
   toHtml() {
-    return '<input type="text" placeholder="name" class="name" value="' + this.name + '"/>\n';
+    return $('<input>')
+      .data('instance', this)
+      .addClass('name')
+      .prop('type', 'text')
+      .prop('placeholder', 'name')
+      .val(this.name);
   }
 
   toCpp() {
@@ -164,7 +167,12 @@ class Description
   }
 
   toHtml() {
-    return '<input type="text" placeholder="description" class="description" value="' + this.description + '"/>\n';
+    return $('<input>')
+      .data('instance', this)
+      .addClass('description')
+      .prop('type', 'text')
+      .prop('placeholder', 'description')
+      .val(this.description);
   }
 
   toCpp() {
@@ -207,19 +215,18 @@ class UtilityScore
   }
 
   toHtml() {
-    let out = '<select class="utility">\n';
+    let out = $('<select>')
+      .data('instance', this)
+      .addClass('utility');
     for (let utility of UtilityScore.valid) {
-      if (utility === this.score) {
-        out += '<option selected value="' + utility + '">' + utility + '</option>\n';
-      }
-      else {
-        out += '<option value="' + utility + '">' + utility + '</option>\n';
-      }
+      out.append($('<option>')
+        .prop('selected', utility === this.score)
+        .val(utility)
+        .text(utility));
     }
-    out += '</select>\n';
     return out;
   }
-
+  
   toCpp() {
     return "UtilityScore::" + this.score;
   }
@@ -265,16 +272,14 @@ class Events
   }
 
   toHtml() {
-    let out = '<ul class="events">';
+    let out = $('<ul>').addClass('events').data('instance', this);
     for (let event of Events.valid) {
-      if (this.events.indexOf(event) !== -1) {
-        out += '<li><input checked type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
-      }
-      else {
-        out += '<li><input type="checkbox" name="' + event + '" value="' + event + '">' + event + '</li>';
-      }
+      out.append($('<li>').append($('<input>')
+        .prop('type', 'checkbox')
+        .prop('checked', this.events.indexOf(event) !== -1)
+        .prop('name', event)
+        .val(event)));
     }
-    out += '</ul>';
     return out;
   }
 
@@ -324,11 +329,15 @@ class Action
   }
 
   toHtml() {
-    return '<textarea placeholder="action" class="action" rows="10" cols="70" >\n'
-      + this.cppCode
-      + '\n</textarea>\n';
+    return $('<textarea>')
+      .data('instance', this)
+      .addClass('action')
+      .prop('placeholder', 'action')
+      .prop('rows', 10)
+      .prop('cols', 70)
+      .val(this.cppCode);
   }
-
+  
   toCpp() {
     return 'actions {'
       + this.cppCode
@@ -365,7 +374,7 @@ class Decision
     // Parse considerations
     let conId = 0;
     let match = considerationExpression.exec(decisionText);
-    while (match != null) {
+    while (match !== null) {
       let startPos = match.index + match[0].length - 1;
       let endPos = findClosingBracket(decisionText, startPos, "normal");
       let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
@@ -383,21 +392,29 @@ class Decision
   }
 
   toHtml() {
-    let htmlConsiderations = this.considerations.map(function(x){ return x.toHtml(); });
-    return '<div class="decision_wrapper">\n'
-      + createLabel(this.name.name, "decision_label")
-      + '<div class="decision" id="decision' + this.id + '">\n'
-      + this.name.toHtml()
-      + this.description.toHtml()
-      + this.utility.toHtml()
-      + this.events.toHtml()
-      + '<input type="button" value="Add Consideration" class="addConsideration" />'
-      + '<div class="considerations">\n'
-      + htmlConsiderations.join("\n")
-      + '</div>\n'
-      + this.action.toHtml()
-      + '</div>\n'
-      + '</div>\n';
+    let considerations = $('<div>').addClass('considerations');
+    for (let consideration of this.considerations) {
+      considerations.append(consideration.toHtml());
+    }
+    
+    return $('<div>')
+      .data('instance', this)
+      .addClass('decision_wrapper')
+      .append(createLabel(this.name.name, 'decision_label'))
+      .append($('<div>')
+        .data('instance', this)
+        .addClass('decision')
+        .prop('id', 'decision_' + this.id)
+        .append(this.name.toHtml())
+        .append(this.description.toHtml())
+        .append(this.utility.toHtml())
+        .append(this.events.toHtml())
+        .append($('<input>')
+          .addClass('addConsideration')
+          .prop('type', 'button')
+          .val('Add Consideration'))
+        .append(considerations)
+        .append(this.action.toHtml()));
   }
 
   toCpp() {
@@ -453,7 +470,7 @@ class Decision
 
   updateConsiderationOrder() {
     let sortedConsideration = [];
-    for (let considerationElement of $("#decision" + this.id + " .considerations .consideration")) {
+    for (let considerationElement of $("#decision_" + this.id + " .considerations .consideration")) {
       let match = idNumberExpression.exec($(considerationElement).prop("id"));
       let id = parseInt(match[0], 10);
       let result = this.getConsiderationById(id);
@@ -490,12 +507,21 @@ class Range
   }
 
   toHtml() {
-    return '<span class="range">'
-      + '<input placeholder="min" class="min" type="number" value="' + this.minRange + '"/>'
-      + '<input placeholder="max" class="max" type="number" value="' + this.maxRange + '"/>'
-      + '</span>';
+    return $('<span>')
+      .data('instance', this)
+      .addClass('range')
+      .append($('<input>')
+        .addClass('min')
+        .prop('type', 'number')
+        .prop('placeholder', 'min')
+        .val(this.minRange))
+      .append($('<input>')
+        .addClass('max')
+        .prop('type', 'number')
+        .prop('placeholder', 'max')
+        .val(this.maxRange));
   }
-
+  
   toCpp() {
     return "range(" + this.minRange + ", " + this.maxRange + ")";
   }
@@ -525,11 +551,15 @@ class UtilityFunction
   constructor(cppCode) {
     this.cppCode = cppCode;
   }
-
+  
   toHtml() {
-    return '<textarea placeholder="utility function" class="utility_function" rows="10" cols="70" >\n'
-      + this.cppCode
-      + '\n</textarea>\n';
+    return $('<textarea>')
+      .data('instance', this)
+      .addClass('utility_function')
+      .prop('placeholder', 'utility function')
+      .prop('rows', 10)
+      .prop('cols', 70)
+      .val(this.cppCode);
   }
 
   toCpp() {
@@ -569,15 +599,18 @@ class Consideration
   }
 
   toHtml() {
-    return '<div class="consideration_wrapper">\n'
-      + createLabel(this.description.description, "consideration_label")
-      + '<div class="consideration" id="consideration_' + this.decisionId + '_' + this.id + '">\n'
-      + this.description.toHtml()
-      + this.range.toHtml()
-      + this.transform.toHtml()
-      + this.utilityFunction.toHtml()
-      + '</div>\n'
-      + '</div>\n';
+    return $('<div>')
+      .data('instance', this)
+      .addClass('consideration_wrapper')
+      .append(createLabel(this.description.description, 'consideration_label'))
+      .append($('<div>')
+        .data('instance', this)
+        .addClass('consideration')
+        .prop('id', 'consideration_' + this.decisionId + '_' + this.id)
+        .append(this.description.toHtml())
+        .append(this.range.toHtml())
+        .append(this.transform.toHtml())
+        .append(this.utilityFunction.toHtml()));
   }
 
   toCpp() {
@@ -591,7 +624,6 @@ class Consideration
   }
 
   update(elementStack) {
-    console.log(elementStack);
     let top = elementStack.pop();
     if (top.hasClass("range")) {
       if (elementStack.length !== 1) {
@@ -849,13 +881,17 @@ class Visualization
   }
 
   toHtml() {
-    let out = "";
+    return $('<div>')
+      .data('instance', this)
+      .addClass('plot_container')
+      .append($('<svg>')
+        .prop('id', this.name)
+        .prop('width', this.width)
+        .prop('height', this.height));
+  }
 
-    out += "<div class='plot_container'>\n";
-    out += "<svg id='"+this.name+"' width='"+this.width+"' height='"+this.height+"'></svg>\n";
-    out += "</div>\n";
-
-    return out;
+  toCpp() {
+    return '';
   }
 }
 
@@ -896,36 +932,31 @@ class Transform
   }
 
   toHtml() {
-    let htmlArgs = [];
-    let out = '<div class="transform">\n'
-      + '<select class="transform-type">\n';
-    for (let transformType in Transform.valid) {
-      let htmlArgument = '';
-      let transformArgs = Transform.valid[transformType];
-      if (transformType === this.type) {
-        out += '<option selected value="' + transformType + '">' + transformType + '</option>\n';
-        for (let i = 0; i < transformArgs.length; i++) {
-          htmlArgument += '<input type="text" class="transform-argument ' + transform.type
-            + '" placeholder="' + transformArgs[i]
-            + '" value="' + this.args[i] + '"/>\n';
-        }
-      }
-      else {
-        out += '<option value="' + transformType + '">' + transformType + '</option>\n';
-        for (let i = 0; i < transformArgs.length; i++) {
-          htmlArgument += '<input type="text" '
-            + 'class="transform-argument ' + transformType + ' ' + transformArgs[i] + '" '
-            + 'placeholder="' + transformArgs[i] + '"/>\n';
-        }
-      }
-      htmlArgs.push(htmlArgument);
-    }
-    out += '</select>\n';
-    out += htmlArgs.join('');
-    out += this.visualization.toHtml();
-    out += '</div>\n';
+    let out = $('<div>')
+      .data('instance', this)
+      .addClass('transform');
+    let types = $('<select>')
+      .addClass('transform-type');
 
-    return out;
+    out.append(types);
+
+    for (let transformType in Transform.valid) {
+      let transformArgs = Transform.valid[transformType];
+
+      types.append($('<option>')
+        .prop('selected', transformType === this.type)
+        .val(transformType)
+        .text(transformType));
+
+      for (let transformArg of transformArgs) {
+        out.append($('<input>')
+          .addClass('transform-argument')
+          .addClass(transformType)
+          .addClass(transformArg)
+          .prop('type', 'text')
+          .prop('placeholder', transformArg));
+      }
+    }
   }
 
   toCpp() {
@@ -976,10 +1007,14 @@ function showRelevantTransformArguments(transformTypeTag) {
 }
 
 function createLabel(content, labelClass) {
-  if (labelClass === undefined) {
-    labelClass = 'label';
-  }
-  return '<div class="' + labelClass + '"><span class="content">' + content + '</span> <span class="label-cross">\u274C</span></div>\n';
+  return $('<div>')
+    .addClass(labelClass === undefined ? 'label' : labelClass)
+    .append($('<span>')
+      .addClass('content')
+      .text(content))
+    .append($('<span>')
+      .addClass('label-cross')
+      .text('\u274C'));
 }
 
 /** Finds the closing bracket of a given opening bracket.
@@ -997,11 +1032,11 @@ function findClosingBracket(text, openPosition, bracketType) {
     o = "{";
     c = "}";
   }
-  while (count != 0 && pos < text.length) {
+  while (count !== 0 && pos < text.length) {
     let char = text[pos];
     switch (char) {
       case "\"":
-        if (text[pos-1] != "\\")
+        if (text[pos-1] !== "\\")
           inString = !inString;
         break;
       case o:
@@ -1013,7 +1048,7 @@ function findClosingBracket(text, openPosition, bracketType) {
           count--;
         break;
     }
-    if (count == 0)
+    if (count === 0)
       return pos;
     pos++;
   }
@@ -1034,8 +1069,7 @@ function readSingleFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       intelligence = new Intelligence(content);
-      let container = $("#intelligence_container");
-      container.html(intelligence.toHtml());
+      $('#intelligence_container').append(intelligence.toHtml());
       intelligence.initializeVisualizations();
 
       // Update the displayed graph of a Transform when its type is changed
@@ -1107,7 +1141,6 @@ function readSingleFile(evt) {
             let htmlConsideration = ui.item.children(".consideration");
             let htmlId = htmlConsideration.prop("id");
             let decisionId = parseInt(/\d+/.exec(htmlId)[0], 10);
-            console.log("id: " + decisionId);
             intelligence.getDecisionById(decisionId).updateConsiderationOrder();
           }
         });
@@ -1116,13 +1149,11 @@ function readSingleFile(evt) {
 
       // Remove a Consideration when clicking on the cross
       $(".consideration_label .label-cross").click(function() {
-        console.log("cross clicked");
         // Select the consideration to remove
         let match = idNumberExpression.exec($(this).parent().next().prop("id"));
         let considerationId = parseInt(match[0], 10);
         match = idNumberExpression.exec($(this).closest(".decision").prop("id"));
         let decisionId = parseInt(match[0], 10);
-        console.log(decisionId);
         intelligence.getDecisionById(decisionId).removeConsideration(considerationId);
         // And make it go away on the screen as well
         let duration = 400;
@@ -1133,7 +1164,7 @@ function readSingleFile(evt) {
     };
     r.readAsText(f);
   } else {
-    console.log("Failed to load file");
+    console.error("Failed to load file");
   }
 }
 
@@ -1149,8 +1180,6 @@ function readSingleFile(evt) {
  * the global variable intelligence's update method.
  */
 function updateOnChange(element, event) {
-  console.log("***");
-  console.log("Change event triggered.");
   let stack = [$(element)];
   while (true) {
     let ancestor = stack[stack.length - 1].parent();
