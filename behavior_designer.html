@@ -20,36 +20,13 @@
           });
 
           $(":button#addDecision").click(function() {
-            // TODO: implement addDecision
-          });
-
-          $(document).delegate(":button.addConsideration", "click", function() {
-            // TODO: implement addConsideration
+            intelligence.addEmptyDecision();
           });
 
           $(":button#getCpp").click(function() {
             if (intelligence !== null)
               window.open('data:text/plain;charset=utf-8,' + encodeURI(intelligence.toCpp()));
           });
-
-          $(document).delegate("#decision_container").accordion({
-            collapsible: true,
-            header: ".name"
-          });
-
-          $(document).delegate(".transform-type",
-              "change",
-              function() {
-                showRelevantTransformArguments(this);
-              });
-
-          $(document).delegate("#decision_container input,"
-              + "#decision_container select,"
-              + "#decision_container textarea",
-              "change",
-              function(event) {
-                updateOnChange(this, event);
-              });
         });
       </script>
       <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
