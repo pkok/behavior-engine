@@ -288,7 +288,7 @@ class Events
   static get valid() {
     return [
       'Always',
-      'Ignore'
+      'Ignore',
     ];
   }
 

@@ -24,8 +24,13 @@
           });
 
           $(":button#getCpp").click(function() {
-            if (intelligence !== null)
-              window.open('data:text/plain;charset=utf-8,' + encodeURI(intelligence.toCpp()));
+            if (intelligence !== null) {
+              let data = new Blob([intelligence.toCpp()], {type: 'application/x-decision-engine-ruleset'});
+              let textFile = window.URL.createObjectURL(data);
+              $(this).prop('download', 'Rules.h');
+              window.open(textFile);
+              window.URL.revokeObjectURL(textFile);
+            }
           });
         });
       </script>
