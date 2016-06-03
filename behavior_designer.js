@@ -423,7 +423,7 @@ class Decision
   }
 
   addEmptyConsideration() {
-    this.considerations.unshift(new Consideration(this.id, this.conId++, emptyConsiderationCpp));
+    this.considerations.unshift(new Consideration(this, this.conId++, emptyConsiderationCpp));
     this.considerations[0].description.description = 'New Consideration';
     $('#decision_' + this.id + ' .considerations').prepend(this.considerations[0].toHtml());
   }
@@ -465,8 +465,9 @@ class Decision
         .append(this.description.toHtml())
         .append(this.utility.toHtml())
         .append(this.events.toHtml())
-        .append($('<button>')
+        .append($('<input>')
           .addClass('addConsideration')
+          .prop('type', 'button')
           .val('Add Consideration')
           .click(function() {
             decision.addEmptyConsideration();
@@ -480,9 +481,7 @@ class Decision
         heightStyle: 'content',
         icons: false
       });
-    
-    out.find('input').change(function (event) { updateOnChange(this, event); });
-    
+    out.find('input, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -674,6 +673,7 @@ class Consideration
       heightStyle: 'content',
       icons: false
     });
+    out.find('input, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -682,9 +682,8 @@ class Consideration
       + this.description.toCpp() + ',\n'
       + this.range.toCpp() + ',\n'
       + this.transform.toCpp() + ',\n'
-      + '{\n'
       + this.utilityFunction.toCpp() + '\n'
-      + '})';
+      + ')';
   }
 
   update(elementStack) {
@@ -715,7 +714,7 @@ class Consideration
   }
 
   remove() {
-    console.log(this.parentDecision.removeConsideration(this.id));
+    this.parentDecision.removeConsideration(this.id);
   }
 }
 
