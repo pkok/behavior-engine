@@ -64,13 +64,15 @@ class Decision {
      * The weighing factor adjusts for this.
      */
     float computeScore() const {
-      float score = static_cast<float>(utility);
+      const float modification_factor = 1.f - (1.f / (float) considerations.size());
+      float total_score = static_cast<float>(utility);
+      float score = 0.f;
       for (auto& consideration : considerations) {
-        // TODO: Fix weighing
-        score *= consideration.computeScore();
-        if (score < 1e-6) break;
+        score = consideration.computeScore();
+        total_score *= score + ((1.f - score) * modification_factor * score);
+        if (total_score < 1e-6) break;
       }
-      return score;
+      return total_score;
     }
 
     const std::string& getName() const { return name; }
