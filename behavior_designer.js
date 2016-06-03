@@ -371,7 +371,7 @@ class Action
   }
   
   toCpp() {
-    return 'actions {'
+    return 'actions {\n'
       + this.cppCode
       + '\n}';
   }
@@ -618,7 +618,7 @@ class UtilityFunction
   }
 
   toCpp() {
-    return '{'
+    return '{\n'
       + this.cppCode
       + '\n}';
   }
