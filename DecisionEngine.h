@@ -17,6 +17,10 @@
 #include <iostream>
 #endif
 
+#if defined(BHUMAN) || BHUMAN
+#include "Representations/BehaviorControl/ActivationGraph.h"
+#endif
+
 /** Using these macros, writing addDecision becomes more readable and less
  *  error prone than typing them out.  Note that within the Decision you are
  *  creating, you have access to other values through the following ways:
@@ -198,6 +202,9 @@ class DecisionEngine {
           break;
         }
         float score = decision.computeScore();
+#if defined(BHUMAN) || BHUMAN
+        updateActivationGraph(decision.getName(), score);
+#endif
 #ifdef NDEBUG
         std::cout << "    score: " << score << "\n";
 #endif
@@ -228,6 +235,12 @@ class DecisionEngine {
       return actives;
     }
 
+#if defined(BHUMAN) || BHUMAN
+    ActivationGraph getActivationGraph() {
+      return activation_graph;
+    }
+#endif
+
   protected:
     using Rule = std::tuple<Event, std::reference_wrapper<Decision>>;
 
@@ -235,6 +248,9 @@ class DecisionEngine {
     std::vector<Rule> active_rules;
     std::unordered_set<Event> active_events;
     std::unordered_set<Event> updated_events;
+#if defined(BHUMAN) || BHUMAN
+    ActivationGraph activation_graph;
+#endif
 
     /** Sort Decisions in rules and active_rules based on their UtilityScore.
      *
@@ -264,5 +280,9 @@ class DecisionEngine {
           [](const Rule& x, const Rule& y) {
               return std::get<1>(x).get().getUtility() > std::get<1>(y).get().getUtility();
           });
+    }
+
+    void updateActivationGraph(const std::string& name, float score) {
+      // TODO
     }
 };
