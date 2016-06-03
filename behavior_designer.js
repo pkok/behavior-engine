@@ -56,7 +56,38 @@ const emptyConsiderationCpp = 'consideration('
   + '}\n'
   + '),';
 
+var globals = null;
 var intelligence = null;
+
+class Globals
+{
+  constructor(globalsText) {
+    this.cppCode = globalsText;
+  }
+
+  toHtml() {
+    return $('<textarea>')
+      .data('instance', this)
+      .addClass('globals')
+      .prop('placeholder', 'global variables')
+      .prop('rows', 10)
+      .prop('cols', 70)
+      .change(this.update)
+      .val(this.cppCode);
+  }
+
+  toCpp() {
+    return this.cppCode;
+  }
+
+  update(element) {
+    if (element.hasClass('globals')) {
+      this.cppCode = element.val();
+      return true;
+    }
+    return false;
+  }
+}
 
 //noinspection JSDuplicatedDeclaration
 class Intelligence
@@ -288,7 +319,7 @@ class Events
   static get valid() {
     return [
       'Always',
-      'Ignore',
+      'Ignore'
     ];
   }
 
@@ -1138,6 +1169,20 @@ function findClosingBracket(text, openPosition, bracketType) {
   return -1;
 }
 
+function readGlobalsFile(evt) {
+  let f = evt.target.files[0];
+  if (f) {
+    let r = new FileReader();
+    r.onload = function (e) {
+      let content = e.target.result;
+      globals = new Globals(content);
+      $('#globals_container').append(globals.toHtml());
+    };
+    r.readAsText(f);
+  } else {
+    console.error('Failed to load file');
+  }
+}
 /**
  * Read a C++ file with only calls to DecisionEngine::addDecision, and parse it.
  *
@@ -1145,7 +1190,7 @@ function findClosingBracket(text, openPosition, bracketType) {
  * When the file is loaded, it creates an Intelligence object that is a
  * Javascript representation of the set of Decisions.
  */
-function readSingleFile(evt) {
+function readDecisionFile(evt) {
   let f = evt.target.files[0];
   if (f) {
     let r = new FileReader();
@@ -1159,6 +1204,13 @@ function readSingleFile(evt) {
   } else {
     console.error('Failed to load file');
   }
+}
+
+function downloadHeaderFile(content, fileName) {
+  let data = new File([content], fileName, {type: 'text/x-h'});
+  let textFile = window.URL.createObjectURL(data);
+  window.open(textFile);
+  window.URL.revokeObjectURL(textFile);
 }
 
 /**

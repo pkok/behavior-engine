@@ -11,25 +11,35 @@
       <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
       <script src="behavior_designer.js"></script>
       <script type="text/javascript">
-        $(document).ready(function() {
-          $(":button").prop("disabled", true);
+        'use strict';
 
-          $(":file#fileInput").change(function (event) {
-            $(":button:disabled").prop("disabled", false);
-            readSingleFile(event);
+        $(document).ready(function() {
+          $(':button').prop('disabled', true);
+
+          $(':file#globals_file').change(function (event) {
+            $('#globals_section :button:disabled').prop('disabled', false);
+            $('#globals_container textarea').remove();
+            readGlobalsFile(event);
           });
 
-          $(":button#addDecision").click(function() {
+          $(':button#getGlobals').click(function () {
+            if (globals !== null) {
+              downloadHeaderFile(globals.toCpp(), $('#globals_file').val());
+            }
+          });
+
+          $(':file#decisions_file').change(function (event) {
+            $('#decisions_section :button:disabled').prop('disabled', false);
+            readDecisionFile(event);
+          });
+
+          $(':button#addDecision').click(function () {
             intelligence.addEmptyDecision();
           });
 
-          $(":button#getCpp").click(function() {
+          $(':button#getDecisions').click(function () {
             if (intelligence !== null) {
-              let data = new Blob([intelligence.toCpp()], {type: 'application/x-decision-engine-ruleset'});
-              let textFile = window.URL.createObjectURL(data);
-              $(this).prop('download', 'Rules.h');
-              window.open(textFile);
-              window.URL.revokeObjectURL(textFile);
+              downloadHeaderFile(intelligence.toCpp(), $('#decisions_file').val());
             }
           });
         });
@@ -39,6 +49,12 @@
         html {
           padding: 0;
           margin: 0;
+        }
+
+        #globals_container {
+          border: 3px dotted;
+          margin: 5px;
+          padding: 5px;
         }
 
         #intelligence_container {
@@ -54,10 +70,20 @@
       </style>
     </head>
     <body>
-      <input type="file" id="fileInput" />
-      <input type="button" value="Add Decision" id="addDecision" />
-      <input type="button" value="C++" id="getCpp" />
-        <div id="intelligence_container">
-        </div>
+      <div id="globals_section">
+        <input type="file" id="globals_file" />
+        <input type="button" value="Download globals" id="getGlobals" />
+      </div>
+      <div id="globals_container">
+      </div>
+
+      <div id="decisions_section">
+        <input type="file" id="decisions_file" />
+        <input type="button" value="Add Decision" id="addDecision" />
+        <input type="button" value="Download Decisions" id="getDecisions" />
+      </div>
+
+      <div id="intelligence_container">
+      </div>
     </body>
 </html>
