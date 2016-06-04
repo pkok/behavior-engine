@@ -26,14 +26,14 @@ const idNumberExpression        = /\d+\s*$/;
 const decisionExpression        = /addDecision\(/g;
 const nameExpression            = /name\(\s*['"](.*)['"]\s*\)\s*,/;
 const utilityExpression         = /UtilityScore::(.*)\s*,/;
-const eventsExpression          = /events\s*\{(?:\s*Event::\w+\s*,)*\s*Event::\w+\s*,?\s*\}\s*,/;
+const eventsExpression          = /events\s*\{(?:\s*Event::\w+\s*,)*(?:(?:\s*Event::\w+\s*),?)?\s*\}\s*,/;
 const singleEventExpression     = /Event::(\w+)/g;
 const actionExpression          = /actions\s*\{([\s\S]*)\s*\}/;
 
 // Consideration expressions
 const considerationExpression   = /consideration\(/g;
 const rangeExpression           = /range\(\s*(.*?),\s*(.*?)\s*\)\s*,/;
-const transformExpression       = /Transform::\s*(\S*?)\s*\((.*?)\)\s*,/;
+const transformExpression       = /Transform::\s*(\S*?)\s*\(([^\)]*)\)\s*,/;
 const inputExpression           = /Transform::.*?\(.*?\),\s*\{/;
 
 // Shared expressions
@@ -41,7 +41,7 @@ const descriptionExpression     = /description\(\s*['"](.*)['"]\s*\)\s*,/;
 
 // Example of an empty Decision in C++
 const emptyDecisionCpp = 'addDecision(\n'
-  + 'name(""),\n'
+  + 'name("New Decision"),\n'
   + 'description(""),\n'
   + 'UtilityScore::Useful,\n'
   + 'events {},\n'
@@ -153,8 +153,6 @@ class Intelligence
 
   addEmptyDecision() {
     this.decisions.unshift(new Decision(this.decisionId++, emptyDecisionCpp));
-    this.decisions[0].name.name = 'New Decision';
-    let newDecision = this.decisions[0].toHtml();
     $('#decision_container').prepend(this.decisions[0].toHtml());
   }
 
@@ -484,7 +482,7 @@ class Decision
   }
   
   addEmptyConsideration() {
-    addConsideration(emptyConsiderationCpp);
+    this.addConsideration(emptyConsiderationCpp);
   }
 
   duplicateConsideration(considerationId) {
@@ -714,7 +712,9 @@ class UtilityFunction
 class Consideration
 {
   constructor(parentDecision, id, considerationText) {
-    let transformText = transformExpression.exec(considerationText).filter(Boolean);
+    let transformText = transformExpression.exec(considerationText);
+    let transformType = transformText[1];
+    let transformArguments = transformText[2].split(',').filter(Boolean);
     let transformInputStart = inputExpression.exec(considerationText);
     let inputStartPos = transformInputStart.index+transformInputStart[0].length;
     let inputEndPos = findClosingBracket(considerationText, inputStartPos, 'curly');
@@ -723,7 +723,7 @@ class Consideration
     this.parentDecision = parentDecision;
     this.description = new Description(descriptionExpression.exec(considerationText)[1]);
     this.range = new Range(rangeExpression.exec(considerationText));
-    this.transform = new Transform(this.parentDecision.id, this.id, this.range, transformText[1], transformText.slice(2, transformText.length));
+    this.transform = new Transform(this.parentDecision.id, this.id, this.range, transformType, transformArguments);
     this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
   }
 
