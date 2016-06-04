@@ -639,12 +639,12 @@ class Range
       .addClass('range')
       .append($('<input>')
         .addClass('min')
-        .prop('type', 'number')
+        .prop('type', 'text')
         .prop('placeholder', 'min')
         .val(this.minRange))
       .append($('<input>')
         .addClass('max')
-        .prop('type', 'number')
+        .prop('type', 'text')
         .prop('placeholder', 'max')
         .val(this.maxRange));
   }
