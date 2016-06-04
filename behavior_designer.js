@@ -62,7 +62,7 @@ var intelligence = null;
 class Globals
 {
   constructor(globalsText) {
-    this.cppCode = globalsText;
+    this.cppCode = globalsText.trim();
   }
 
   toHtml() {
@@ -200,7 +200,7 @@ class Intelligence
 class Name
 {
   constructor(name) {
-    this.name = name;
+    this.name = name.trim();
   }
 
   toHtml() {
@@ -233,7 +233,7 @@ class Name
 class Description
 {
   constructor(description) {
-    this.description = description;
+    this.description = description.trim();
   }
 
   toHtml() {
@@ -403,7 +403,7 @@ class Events
 class Action
 {
   constructor(cppCode) {
-    this.cppCode = cppCode;
+    this.cppCode = cppCode.trim();
   }
 
   toHtml() {
@@ -676,7 +676,7 @@ class Range
 class UtilityFunction
 {
   constructor(cppCode) {
-    this.cppCode = cppCode;
+    this.cppCode = cppCode.trim();
   }
   
   toHtml() {
@@ -1071,7 +1071,7 @@ class Transform
     this.considerationId = conId;
     this.range = range;
     this.type = type;
-    this.args = args;
+    this.args = args.map(function (arg) { return arg.trim(); });
 
     this.visualization = new Visualization(this);
     //this.visualization = new Visualization(this.type, this.decisionId, this.considerationId, this.range, this.args);
