@@ -50,7 +50,7 @@ const emptyDecisionCpp = 'addDecision(\n'
   + ');';
 // Example of an empty Consideration in C++
 const emptyConsiderationCpp = 'consideration('
-  + 'description(""),\n'
+  + 'description("New Consideration"),\n'
   + 'range(0, 1),\n'
   + 'Transform::Identity(),\n'
   + '{}\n'
@@ -463,7 +463,7 @@ class Decision
     this.conId = 0;
     match = considerationExpression.exec(decisionText);
     while (match !== null) {
-      let startPos = match.index + match[0].length - 1;
+      let startPos = match.index /*+ match[0].length*/ - 1;
       let endPos = findClosingBracket(decisionText, startPos, 'normal');
       let considerationText = decisionText.substr(startPos, endPos - startPos + 1);
 
@@ -478,10 +478,13 @@ class Decision
     }
   }
 
-  addEmptyConsideration() {
-    this.considerations.unshift(new Consideration(this, this.conId++, emptyConsiderationCpp));
-    this.considerations[0].description.description = 'New Consideration';
+  addConsideration(considerationText) {
+    this.considerations.unshift(new Consideration(this, this.conId++, considerationText));
     $('#decision_' + this.id + ' .considerations').prepend(this.considerations[0].toHtml());
+  }
+  
+  addEmptyConsideration() {
+    addConsideration(emptyConsiderationCpp);
   }
 
   duplicateConsideration(considerationId) {
@@ -1196,20 +1199,49 @@ function createLabel(content, labelClass) {
         .addClass('control-move')
         .prop('title', 'Move Consideration to another Decision')
         .val('\u21F5')
-        .click(function() {
-          let considerationText = out.parent().first().data('instance').toCpp();
-          let decision = decisionSelectorPopup();
-          if (decision) {
-            decision.addConsideration(considerationText);
-          }
+        .click(function(event) {
+          let consideration = out.parent().first().data('instance');
+          console.log(consideration.description.description);
+          decisionSelectorPopup(
+            event.pageX,
+            event.pageY,
+            consideration.toCpp(),
+            function () {
+              consideration.parentDecision.removeConsideration(consideration.id);
+              out.closest('.consideration_wrapper').remove();
+            });
         }));
   }
 
   return out;
 }
 
-function decisionSelectorPopup() {
-  
+function decisionSelectorPopup(posX, posY, considerationText, removeCallback) {
+  let out = $('<div>')
+    .prop('class', 'popup')
+    .css('top', posY)
+    .css('left', posX);
+  out.text("Move this Consideration to which Decision?");
+  let id_storage = {};
+  for (let decision of intelligence.decisions) {
+    let id = 'popup_decision_' + decision.id;
+    out.append($('<div>')
+      .prop('id', id)
+      .text(decision.name.name));
+    id_storage[id] = decision;
+  }
+  let handler = function (event) {
+    let id = $(event.target).prop('id');
+    if (id in id_storage) {
+      id_storage[id].addConsideration(considerationText);
+      removeCallback();
+    }
+    $(document).unbind('click', handler);
+    out.remove();
+  };
+  $('body').append(out);
+  window.setTimeout(function () { $(document).click(handler); }, 30);
+  //$(document).click(handler);
 }
 
 /** Finds the closing bracket of a given opening bracket.
