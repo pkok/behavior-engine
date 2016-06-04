@@ -24,6 +24,7 @@
 
           $(':button#getGlobals').click(function () {
             if (globals !== null) {
+              console.log(globals.toCpp());
               downloadHeaderFile(globals.toCpp(), $('#globals_file').val());
             }
           });
@@ -63,24 +64,51 @@
           padding: 5px;
         }
 
-        .label-cross {
+        .controls {
           float: right;
-          color: #ff0000;
+        }
+
+        .action {
+          border: 3px dotted;
+        }
+
+        .utility_function {
+          border: 3px double;
+        }
+
+        .control-add {
+          color: #4caf50;
+        }
+
+        .control-delete {
+          color: #f44336;
+        }
+
+        .control-download {
+          color: #9c27b0;
+        }
+
+        .control-duplicate {
+          color: #03a9f4;
+        }
+
+        .control-move {
+          color: #607d8b;
         }
       </style>
     </head>
     <body>
       <div id="globals_section">
-        <input type="file" id="globals_file" />
-        <input type="button" value="Download globals" id="getGlobals" />
+        <input type="file" title="Select Globals file" id="globals_file" />
+        <input type="button" value="&#11015;" title="Download Globals file" class="control-download" id="getGlobals" />
       </div>
       <div id="globals_container">
       </div>
 
       <div id="decisions_section">
         <input type="file" id="decisions_file" />
-        <input type="button" value="Add Decision" id="addDecision" />
-        <input type="button" value="Download Decisions" id="getDecisions" />
+        <input type="button" value="&#10033;" title="Add a new Decision" class="control-add" id="addDecision" />
+        <input type="button" value="&#11015;" title="Download Decisions file" class="control-download" id="getDecisions" />
       </div>
 
       <div id="intelligence_container">

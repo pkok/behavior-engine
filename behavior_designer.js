@@ -26,7 +26,8 @@ const idNumberExpression        = /\d+\s*$/;
 const decisionExpression        = /addDecision\(/g;
 const nameExpression            = /name\(\s*['"](.*)['"]\s*\)\s*,/;
 const utilityExpression         = /UtilityScore::(.*)\s*,/;
-const eventsExpression          = /events\s*\{\s*(Event::(.*?))?\s*(?:,\s*Event::(.*?)\s*)?\}\s*,/;
+const eventsExpression          = /events\s*\{(?:\s*Event::\w+\s*,)*\s*Event::\w+\s*,?\s*\}\s*,/;
+const singleEventExpression     = /Event::(\w+)/g;
 const actionExpression          = /actions\s*\{([\s\S]*)\s*\}/;
 
 // Consideration expressions
@@ -52,8 +53,7 @@ const emptyConsiderationCpp = 'consideration('
   + 'description(""),\n'
   + 'range(0, 1),\n'
   + 'Transform::Identity(),\n'
-  + '{\n'
-  + '}\n'
+  + '{}\n'
   + '),';
 
 var globals = null;
@@ -66,13 +66,14 @@ class Globals
   }
 
   toHtml() {
+    let global = this;
     return $('<textarea>')
       .data('instance', this)
       .addClass('globals')
       .prop('placeholder', 'global variables')
       .prop('rows', 10)
       .prop('cols', 70)
-      .change(this.update)
+      .change(function (event) { return global.update($(event.target)); })
       .val(this.cppCode);
   }
 
@@ -155,6 +156,16 @@ class Intelligence
     this.decisions[0].name.name = 'New Decision';
     let newDecision = this.decisions[0].toHtml();
     $('#decision_container').prepend(this.decisions[0].toHtml());
+  }
+
+  duplicateDecision(decisionId) {
+    let decisionIndex = this.decisions.findIndex(function (d) { return d.id == decisionId; });
+    if (decisionIndex !== -1) {
+      let decision = this.decisions[decisionIndex];
+      let newDecision = new Decision(this.decisionId, decision.toCpp());
+      this.decisions.splice(decisionIndex, 0, newDecision);
+      newDecision.toHtml().insertBefore($(' .decision_wrapper:nth-child(' + (decisionIndex+1) + ')'));
+    }
   }
 
   update(elementStack) {
@@ -319,7 +330,13 @@ class Events
   static get valid() {
     return [
       'Always',
-      'Ignore'
+      'Ignore',
+      'Penalized',
+      'GameStateInitial',
+      'GameStateReady',
+      'GameStateSet',
+      'GameStatePlaying',
+      'GameStateFinished'
     ];
   }
 
@@ -430,13 +447,21 @@ class Decision
     this.name = new Name(nameExpression.exec(decisionText)[1]);
     this.description = new Description(descriptionExpression.exec(decisionText)[1]);
     this.utility = new UtilityScore(utilityExpression.exec(decisionText)[1]);
-    this.events = new Events(eventsExpression.exec(decisionText).slice(2).filter(Boolean));
     this.action = new Action(actionExpression.exec(decisionText)[1]);
     this.considerations = [];
 
+    let eventsText = eventsExpression.exec(decisionText)[0];
+    let eventLabels = [];
+    let match = singleEventExpression.exec(eventsText);
+    while (match !== null) {
+      eventLabels.push(match[1]);
+      match = singleEventExpression.exec(eventsText);
+    }
+    this.events = new Events(eventLabels);
+
     // Parse considerations
     this.conId = 0;
-    let match = considerationExpression.exec(decisionText);
+    match = considerationExpression.exec(decisionText);
     while (match !== null) {
       let startPos = match.index + match[0].length - 1;
       let endPos = findClosingBracket(decisionText, startPos, 'normal');
@@ -457,6 +482,20 @@ class Decision
     this.considerations.unshift(new Consideration(this, this.conId++, emptyConsiderationCpp));
     this.considerations[0].description.description = 'New Consideration';
     $('#decision_' + this.id + ' .considerations').prepend(this.considerations[0].toHtml());
+  }
+
+  duplicateConsideration(considerationId) {
+    let considerationIndex = this.considerations.findIndex(function (d) { return d.id == considerationId; });
+    if (considerationIndex !== -1) {
+      let consideration = this.considerations[considerationIndex];
+      let newConsideration = new Consideration(this, this.conId, consideration.toCpp());
+      this.considerations.splice(considerationIndex, 0, newConsideration);
+      newConsideration.toHtml().insertBefore($('#decision_' + this.id + ' .consideration_wrapper:nth-child(' + (considerationIndex+1) + ')'));
+    }
+  }
+
+  duplicate() {
+    intelligence.duplicateDecision(this.id);
   }
 
   toHtml() {
@@ -498,8 +537,9 @@ class Decision
         .append(this.events.toHtml())
         .append($('<input>')
           .addClass('addConsideration')
+          .addClass('control-add')
           .prop('type', 'button')
-          .val('Add Consideration')
+          .val('\u2731')
           .click(function() {
             decision.addEmptyConsideration();
           }))
@@ -512,7 +552,7 @@ class Decision
         heightStyle: 'content',
         icons: false
       });
-    out.find('input, textarea').change(function (event) { updateOnChange(this, event); });
+    out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -704,7 +744,7 @@ class Consideration
       heightStyle: 'content',
       icons: false
     });
-    out.find('input, textarea').change(function (event) { updateOnChange(this, event); });
+    out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -746,6 +786,10 @@ class Consideration
 
   remove() {
     this.parentDecision.removeConsideration(this.id);
+  }
+
+  duplicate() {
+    this.parentDecision.duplicateConsideration(this.id);
   }
 }
 
@@ -1105,8 +1149,9 @@ class Transform
 
 
 function showRelevantTransformArguments(transformTypeTag) {
-  $(transformTypeTag).siblings('.transform-argument').hide();
-  $(transformTypeTag).siblings('.transform-argument + .' + $(transformTypeTag).val()).show();
+  let transformArguments = $(transformTypeTag).siblings('.transform-argument');
+  transformArguments.hide();
+  transformArguments.filter('.' + $(transformTypeTag).val()).show();
 }
 
 function createLabel(content, labelClass) {
@@ -1115,20 +1160,56 @@ function createLabel(content, labelClass) {
     .append($('<span>')
       .addClass('content')
       .text(content))
+    // A ** symbol to duplicate this item
     .append($('<span>')
-      .addClass('label-cross')
-      .text('\u274C'));
-  
-  // Remove entry from its parent collection and remove it from the DOM
-  out.find('.label-cross').click(function() {
-    let item = out.parent().first();
-    let duration = 400; // ms
-    
-    item.data('instance').remove();
-    item.animate({height: '0px'}, duration);
-    window.setTimeout(function () { item.remove(); }, duration);
-  });
+      .addClass('controls')
+      .append($('<input>')
+        .prop('type', 'button')
+        .addClass('label-duplicate')
+        .addClass('control-duplicate')
+        .prop('title', 'Duplicate')
+        .val('\u2042')
+        .click(function() {
+          let item = out.parent().first().data('instance');
+          item.duplicate();
+        }))
+      // A cross symbol to remove this item
+      .append($('<input>')
+        .prop('type', 'button')
+        .addClass('label-cross')
+        .addClass('control-delete')
+        .prop('title', 'Delete')
+        .val('\u274C')
+        .click(function() {
+          let item = out.parent().first();
+          let duration = 400; // ms
+
+          item.data('instance').remove();
+          item.animate({height: '0px'}, duration);
+          window.setTimeout(function () { item.remove(); }, duration);
+        })));
+  if (labelClass === 'consideration_label') {
+    out.find('.controls')
+      .prepend($('<input>')
+        .prop('type', 'button')
+        .addClass('label-move')
+        .addClass('control-move')
+        .prop('title', 'Move Consideration to another Decision')
+        .val('\u21F5')
+        .click(function() {
+          let considerationText = out.parent().first().data('instance').toCpp();
+          let decision = decisionSelectorPopup();
+          if (decision) {
+            decision.addConsideration(considerationText);
+          }
+        }));
+  }
+
   return out;
+}
+
+function decisionSelectorPopup() {
+  
 }
 
 /** Finds the closing bracket of a given opening bracket.
@@ -1240,3 +1321,23 @@ function updateOnChange(element, event) {
     console.error('The intelligence is not updated correctly!');
   }
 }
+
+$(document).ready(function() {
+  let mouseLastHoverSection = 'decisions_section';
+
+  $('#globals_section + #decisions_section').mouseenter(function (event) {
+    mouseLastHoverSection = $(event.target).prop('id');
+  });
+  
+  $(window).keypress(function (event) {
+    if (!(event.which == 115 && event.ctrlKey) && !(event.which == 19)) return true;
+    if (mouseLastHoverSection === 'globals_section') {
+      $('#getGlobals').click();
+    }
+    else if (mouseLastHoverSection === 'decisions_section') {
+      $('#getDecisions').click();
+    }
+    event.preventDefault();
+    return false;
+  });
+});

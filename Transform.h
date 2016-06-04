@@ -24,19 +24,19 @@ namespace Transform {
 
   Transform Exponential(float base) {
     return Transform([base](float value, float min, float max) {
-        return scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
+        return clip(scale(std::pow(base, value), std::pow(base, min), std::pow(base, max)));
     });
   }
 
   Transform Identity() {
     return Transform([](float value, float min, float max) {
-      return scale(value, min, max);
+      return clip(scale(value, min, max));
     });
   }
 
   Transform Inverted() {
     return Transform([](float value, float min, float max) {
-      return 1.f - scale(value, min, max);
+      return clip(1.f - scale(value, min, max));
     });
   }
 
@@ -48,7 +48,7 @@ namespace Transform {
 
   Transform Power(float power) {
     return Transform([power](float value, float min, float max) {
-        return scale(std::pow(value, power), std::pow(min, power), std::pow(max, power));
+        return clip(scale(std::pow(value, power), std::pow(min, power), std::pow(max, power)));
     });
   }
 }
