@@ -1078,12 +1078,13 @@ class Transform
   }
 
   toHtml() {
+    const args = this.args;
     let out = $('<div>')
       .data('instance', this)
       .addClass('transform');
     let types = $('<select>')
       .addClass('transform-type')
-      .change(function() { showRelevantTransformArguments(this); });
+      .change(function() { showRelevantTransformArguments(this, args); });
 
     out.append(types);
 
@@ -1105,7 +1106,7 @@ class Transform
       }
     }
 
-    showRelevantTransformArguments(types);
+    showRelevantTransformArguments(types, this.args);
     return out;
   }
 
@@ -1139,7 +1140,7 @@ class Transform
         for (let i = 0; i < Transform.valid[this.type].length; i++) {
           let argName = Transform.valid[this.type][i];
           if (element.hasClass(argName)) {
-            this.args[i] = parseFloat(element.val());
+            this.args[i] = element.val();
             successful = true;
             break;
           }
@@ -1151,10 +1152,14 @@ class Transform
 }
 
 
-function showRelevantTransformArguments(transformTypeTag) {
+function showRelevantTransformArguments(transformTypeTag, argValues) {
   let transformArguments = $(transformTypeTag).siblings('.transform-argument');
   transformArguments.hide();
-  transformArguments.filter('.' + $(transformTypeTag).val()).show();
+  let displayArguments = transformArguments.filter('.' + $(transformTypeTag).val());
+  displayArguments.each(function (i, element) {
+    $(element).val(argValues[i]);
+  });
+  displayArguments.show();
 }
 
 function createLabel(content, labelClass) {
@@ -1201,7 +1206,6 @@ function createLabel(content, labelClass) {
         .val('\u21F5')
         .click(function(event) {
           let consideration = out.parent().first().data('instance');
-          console.log(consideration.description.description);
           decisionSelectorPopup(
             event.pageX,
             event.pageY,
