@@ -407,13 +407,16 @@ class Action
   }
 
   toHtml() {
-    return $('<textarea>')
+    return $('<div>')
       .data('instance', this)
-      .addClass('action')
-      .prop('placeholder', 'action')
-      .prop('rows', 10)
-      .prop('cols', 70)
-      .val(this.cppCode);
+      .append($('<div>').text('Action:'))
+      .append($('<textarea>')
+          .data('instance', this)
+          .addClass('action')
+          .prop('placeholder', 'action')
+          .prop('rows', 10)
+          .prop('cols', 70)
+          .val(this.cppCode));
   }
   
   toCpp() {
@@ -680,13 +683,15 @@ class UtilityFunction
   }
   
   toHtml() {
-    return $('<textarea>')
-      .data('instance', this)
-      .addClass('utility_function')
-      .prop('placeholder', 'utility function')
-      .prop('rows', 10)
-      .prop('cols', 70)
-      .val(this.cppCode);
+    return $('<div>')
+      .append($('<div>').text('Utility Function:'))
+      .append($('<textarea>')
+          .data('instance', this)
+          .addClass('utility_function')
+          .prop('placeholder', 'utility function')
+          .prop('rows', 10)
+          .prop('cols', 70)
+          .val(this.cppCode));
   }
 
   toCpp() {
