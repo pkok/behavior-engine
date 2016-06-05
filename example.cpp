@@ -65,7 +65,7 @@ Test::Test() : DecisionEngine() {
       consideration(
         description("Randomness"), 
         range(0, 1), 
-        Transform::Identity(), {
+        Spline::Linear({{0,0}, {1,1}}), {
           return getRandom();
         }),
     },
@@ -86,7 +86,7 @@ Test::Test() : DecisionEngine() {
       consideration(
         description("Randomness"), 
         range(0, 1), 
-        Transform::Identity(), {
+        Spline::Linear({{0,0}, {1, 1}}), {
           return getRandom();
         }),
     },
@@ -107,7 +107,7 @@ Test::Test() : DecisionEngine() {
       consideration(
         description("Always true"),
         range(0, 1),
-        Transform::Binary(true), {
+        Spline::StepBefore({{0,0}, {0.5, 1}, {1,1}}), {
           return true;
         }),
     },

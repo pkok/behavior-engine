@@ -11,7 +11,7 @@
 
 #include "Consideration.h"
 #include "Decision.h"
-#include "Transform.h"
+#include "Spline.h"
 
 #ifdef NDEBUG
 #include <iostream>
@@ -74,9 +74,9 @@ class range : public std::tuple<float, float> {
 
 Consideration createConsideration(const description& d,
     UtilityFunction f,
-    Transform::Transform t,
+    Spline::SplineFunction s,
     const range& r) {
-  return Consideration(d, f, t, std::get<0>(r), std::get<1>(r));
+  return Consideration(d, f, s, std::get<0>(r), std::get<1>(r));
 }
 
 class DecisionException : public std::runtime_error {
