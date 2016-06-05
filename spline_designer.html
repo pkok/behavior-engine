@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Spline Editor</title>
+  <style>
+
+    body {
+      font: 13px sans-serif;
+      position: relative;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    form {
+      position: absolute;
+    }
+
+    rect {
+      fill: #eceff1;
+      pointer-events: all;
+    }
+
+    circle,
+    .line {
+      fill: none;
+      stroke: #2196f3;
+      stroke-width: 1.5px;
+    }
+
+    circle {
+      fill: white;
+      fill-opacity: .2;
+      cursor: move;
+    }
+
+    .selected {
+      fill: #ff9800;
+      stroke: #ff9800;
+    }
+
+  </style>
+  <script src="scripts/d3.v3.min.js" charset="utf-8"></script>
+  <script src="scripts/jquery-2.2.3.min.js"></script>
+  <script type="text/javascript">
+    'use strict';
+
+    // From http://www.jquerybyexample.net/2012/06/get-url-parameters-using-jquery.html
+    function getUrlParameter(sParam) {
+      var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+          sURLVariables = sPageURL.split('&'),
+          sParameterName,
+          i;
+
+      for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+          return sParameterName[1] === undefined ? true : sParameterName[1];
+        }
+      }
+    }
+
+    $(document).ready(function () {
+      var width = 500,//$(window).width(),
+          height = 300 - $('label').height();//$(window).height() - $('form').height();
+
+      var window_id = getUrlParameter('id');
+
+      const INTERPOLATION_TYPES = {
+        'Linear': 'linear',
+        'StepBefore': 'step-before',
+        'StepAfter': 'step-after',
+        'Monotone': 'monotone'
+      };
+
+      var decisionId = window.sessionStorage.getItem(window_id + ',decision');
+      var utility_score = parseFloat(window.sessionStorage.getItem('decision_' + decisionId + ',utilityScore'));
+
+      var minRange = window.sessionStorage.getItem(window_id + ',minRange');
+      if (!minRange) {
+        minRange = 0;
+      }
+
+      var maxRange = window.sessionStorage.getItem(window_id + ',maxRange');
+      if (!maxRange) {
+        maxRange = 1;
+      }
+
+      var interpolation = window.sessionStorage.getItem(window_id + ',interpolation');
+      if (!interpolation) {
+        interpolation = Object.keys(INTERPOLATION_TYPES)[0];
+      }
+
+      var points = window.sessionStorage.getItem(window_id + ',points');
+      if (points) {
+        points = stringToPoints(points);
+      }
+      else {
+        points = d3.range(0, 6).map(function(i) {
+          return [i * width / 5, 50 + Math.random() * (height - 100)];
+        });
+      }
+      console.log("*** " + points.toString());
+
+      var dragged = null,
+          selected = points[0];
+
+      var line = d3.svg.line();
+
+      var svg = d3.select("body").append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("tabindex", 1);
+
+      svg.append("rect")
+          .attr("width", width)
+          .attr("height", height)
+          .on("mousedown", mousedown);
+
+      svg.append("path")
+          .datum(points)
+          .attr("class", "line")
+          .call(redraw);
+
+      d3.select(window)
+          .on("mousemove", mousemove)
+          .on("mouseup", mouseup)
+          .on("keydown", keydown);
+
+      d3.select("#interpolate")
+          .on("change", change)
+          .selectAll("option")
+          .data(Object.keys(INTERPOLATION_TYPES))
+          .enter().append("option")
+          .attr("value", function(d) { return d; })
+          .text(function(d) { return d; });
+
+      /* TODO
+      Als data van C++ komt, dan zitten de punten op waarden
+            utility_score |
+                          |
+                          |
+                          |
+                        0 +----------------------
+                          minRange       maxRange
+
+       Als data van deze designer komt, dan zitten de punten op waarden
+                   0 |
+                     |
+                     |
+                     |
+              height +----------------------
+                     0                 width
+       Dus even transformeren!
+       */
+      function pointCppToJs(point) {
+        let p = [];
+        p.push((point[0] - minRange) / (maxRange - minRange) * width);
+        p.push((utility_score - point[1]) / utility_score * height);
+        return p;
+      }
+
+      function pointJsToCpp(point) {
+        let p = [];
+        p.push(point[0] / width * (maxRange - minRange) + minRange);
+        p.push((height - point[1]) / height * utility_score);
+        return p;
+      }
+
+      function stringToPoints(pointString) {
+        let pointsStripped = pointString.replace(/\{\s*\{/, '{');
+        pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
+
+        let points = [];
+        let pattern = /\{(\s*\d+.?\d*)\s*,\s*(\s*\d+.?\d*)\}/g;
+        let match = pattern.exec(pointsStripped);
+        while (match !== null) {
+          points.push(pointCppToJs([parseFloat(match[1]), parseFloat(match[2])]));
+          match = pattern.exec(pointsStripped);
+        }
+        return points;
+      }
+
+      function pointsToString(points) {
+        let ps = [];
+        for (let p of points) {
+          ps.push(pointJsToCpp(p));
+        }
+        return JSON.stringify(ps)
+            .replace('[', '{', 'g')
+            .replace(']', '}', 'g');
+      }
+
+      function redraw() {
+        points.sort(function (a, b) { return a[0] - b[0]; });
+        console.log('------1 ' + points.toString());
+        console.log(points);
+        window.sessionStorage.setItem(window_id + ',points', pointsToString(points));
+        console.log('------2 ' + points.toString());
+        console.log(points);
+        window.sessionStorage.setItem(window_id + ',interpolation', interpolation);
+        console.log('------3 ' + points.toString());
+        console.log(points);
+
+        svg.select("path").attr("d", line);
+
+        var circle = svg.selectAll("circle")
+            .data(points, function(d) { return d; });
+
+        circle.enter().append("circle")
+            .attr("r", 1e-6)
+            .on("mousedown", function(d) { selected = dragged = d; redraw(); })
+            .transition()
+            .duration(750)
+            .ease("elastic")
+            .attr("r", 6.5);
+
+        circle
+            .classed("selected", function(d) { return d === selected; })
+            .attr("cx", function(d) { return d[0]; })
+            .attr("cy", function(d) { return d[1]; });
+
+        circle.exit().remove();
+
+        if (d3.event) {
+          d3.event.preventDefault();
+          d3.event.stopPropagation();
+        }
+      }
+
+      function change() {
+        line.interpolate(INTERPOLATION_TYPES[this.value]);
+        redraw();
+      }
+
+      function mousedown() {
+        points.push(selected = dragged = d3.mouse(svg.node()));
+        redraw();
+      }
+
+      function mousemove() {
+        if (!dragged) return;
+        var m = d3.mouse(svg.node());
+        if (dragged !== points[0] && dragged !== points[points.length - 1])
+          dragged[0] = Math.max(0, Math.min(width, m[0]));
+        dragged[1] = Math.max(0, Math.min(height, m[1]));
+        redraw();
+      }
+
+      function mouseup() {
+        if (!dragged) return;
+        mousemove();
+        dragged = null;
+      }
+
+      function keydown() {
+        if (!selected) return;
+        switch (d3.event.keyCode) {
+          case 8: // backspace
+          case 46: { // delete
+            var i = points.indexOf(selected);
+            points.splice(i, 1);
+            selected = points.length ? points[i > 0 ? i - 1 : 0] : null;
+            redraw();
+            break;
+          }
+        }
+      }
+
+      window.addEventListener('storage', function (e) {
+        if (e.key.startsWith(window_id)) {
+          let specifier = e.key.split(',');
+          if (specifier[1] === 'minRange') minRange = parseFloat(e.newValue);
+          if (specifier[1] === 'maxRange') maxRange = parseFloat(e.newValue);
+        }
+      });
+    });
+  </script>
+</head>
+
+
+<body>
+<form>
+  <label for="interpolate">Interpolate:</label>
+  <select id="interpolate"></select><br>
+</form>
+</body>
+</html>

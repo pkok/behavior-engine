@@ -33,8 +33,7 @@ const actionExpression          = /actions\s*\{([\s\S]*)\s*\}/;
 // Consideration expressions
 const considerationExpression   = /consideration\(/g;
 const rangeExpression           = /range\(\s*(.*?),\s*(.*?)\s*\)\s*,/;
-const transformExpression       = /Transform::\s*(\S*?)\s*\(([^\)]*)\)\s*,/;
-const inputExpression           = /Transform::.*?\(.*?\),\s*\{/;
+const splineExpression          = /Spline::(\w+)\((.+)\)\s*,\s*{/;
 
 // Shared expressions
 const descriptionExpression     = /description\(\s*['"](.*)['"]\s*\)\s*,/;
@@ -52,7 +51,7 @@ const emptyDecisionCpp = 'addDecision(\n'
 const emptyConsiderationCpp = 'consideration('
   + 'description("New Consideration"),\n'
   + 'range(0, 1),\n'
-  + 'Transform::Identity(),\n'
+  + 'Spline::Linear({{0, 0}, {1, 1}}),\n'
   + '{}\n'
   + '),';
 
@@ -109,12 +108,6 @@ class Intelligence
         this.decisions.push(theDecision);
       }
       match = decisionExpression.exec(intelligenceText);
-    }
-  }
-
-  initializeVisualizations() {
-    for (let dec of this.decisions) {
-      dec.initializeVisualizations();
     }
   }
 
@@ -268,17 +261,17 @@ class Description
 class UtilityScore
 {
   static get valid() {
-    return [
-      'Ignore',
-      'SlightlyUseful',
-      'Useful',
-      'VeryUseful',
-      'MostUseful'
-    ];
+    return {
+      'Ignore': 0,
+      'SlightlyUseful': 1,
+      'Useful': 2,
+      'VeryUseful': 3,
+      'MostUseful': 4
+    };
   }
 
   constructor(scoreLabel) {
-    if (UtilityScore.valid.indexOf(scoreLabel) === -1) {
+    if (!(scoreLabel in UtilityScore.valid)) {
       throw new Error('"' + scoreLabel  + '" is not a valid UtilityScore');
     }
     this.score = scoreLabel;
@@ -288,7 +281,7 @@ class UtilityScore
     let out = $('<select>')
       .data('instance', this)
       .addClass('utility');
-    for (let utility of UtilityScore.valid) {
+    for (let utility in UtilityScore.valid) {
       out.append($('<option>')
         .prop('selected', utility === this.score)
         .val(utility)
@@ -304,7 +297,7 @@ class UtilityScore
   update(element) {
     if (element.hasClass('utility')) {
       let newScore = element.val();
-      if (UtilityScore.valid.indexOf(newScore) === -1) {
+      if (!(newScore in UtilityScore.valid)) {
         throw new Error('"' + newScore + '" is not a valid UtilityScore');
       }
       this.score = newScore;
@@ -446,9 +439,10 @@ class Decision
     this.name = new Name(nameExpression.exec(decisionText)[1]);
     this.description = new Description(descriptionExpression.exec(decisionText)[1]);
     this.utility = new UtilityScore(utilityExpression.exec(decisionText)[1]);
+    window.sessionStorage.setItem('decision_' + this.id +',utilityScore', UtilityScore.valid[this.utility.score]);
     this.action = new Action(actionExpression.exec(decisionText)[1]);
     this.considerations = [];
-
+    
     let eventsText = eventsExpression.exec(decisionText)[0];
     let eventLabels = [];
     let match = singleEventExpression.exec(eventsText);
@@ -468,12 +462,6 @@ class Decision
 
       this.considerations.push(new Consideration(this, this.conId++, considerationText));
       match = considerationExpression.exec(decisionText)
-    }
-  }
-
-  initializeVisualizations() {
-    for (let con of this.considerations) {
-      con.transform.visualization.initialize();
     }
   }
 
@@ -515,7 +503,7 @@ class Decision
           // Prevent accordion to open after the sort has stopped.
           window.setTimeout(function () { ui.item.accordion('enable'); }, 30);
         },
-        update: function (event, ui) {
+        update: function () {
           decision.updateConsiderationOrder();
         }
       });
@@ -590,7 +578,9 @@ class Decision
         return this.description.update(top);
       }
       else if (top.hasClass('utility')) {
-        return this.utility.update(top);
+        return this.utility.update(top)
+          && (window.sessionStorage.setItem('decision_' + this.id +',utilityScore', UtilityScore.valid[this.utility.score])
+            || true);
       }
       else if (top.hasClass('action')) {
         return this.action.update(top);
@@ -706,6 +696,70 @@ class UtilityFunction
   }
 }
 
+window.addEventListener('storage', function (e) {
+  if (intelligence.decisions && e.key.startsWith('spline')) {
+    let specifier = e.key.split(',');
+    Spline.findById(specifier[0]).update(specifier[1], e.newValue);
+  }
+});
+
+class Spline {
+  static findById(splineId) {
+    let decisionId = window.sessionStorage.getItem(splineId + ',decision');
+    let considerationId = window.sessionStorage.getItem(splineId + ',consideration');
+    return intelligence.decisions.find(function (d) {
+      return d.id == decisionId;
+    })
+      .considerations.find(function (c) {
+        return c.id == considerationId;
+      })
+      .spline;
+  }
+
+  constructor(decisionId, considerationId, range, interpolation, splinePoints) {
+    this.id = 'spline_' + decisionId + '_' + considerationId;
+    this.range = range;
+    this.points = splinePoints;
+    this.interpolation = interpolation;
+
+    window.sessionStorage.setItem(this.id + ',decision', decisionId);
+    window.sessionStorage.setItem(this.id + ',consideration', considerationId);
+    window.sessionStorage.setItem(this.id + ',points', this.points);
+    window.sessionStorage.setItem(this.id + ',interpolation', this.interpolation);
+    window.sessionStorage.setItem(this.id + ',minRange', this.range.minRange);
+    window.sessionStorage.setItem(this.id + ',maxRange', this.range.maxRange);
+  }
+
+  toHtml() {
+    return $('<iframe>')
+      .addClass('spline')
+      .width(500)
+      .height(300)
+      .prop('src', 'spline_designer.html?id=' + this.id);
+  }
+
+  toCpp() {
+    return 'Spline::' + this.interpolation + '('
+      + this.points
+      + '),\n';
+  }
+  
+  update(key, value) {
+    if (key === 'points') {
+      this.points = value;
+      return true;
+    }
+    else if (key === 'interpolation') {
+      this.interpolation = value;
+    }
+    return false;
+  }
+
+  updateRange(range) {
+    this.range = range;
+  }
+}
+
 /**
  * Wrapper for C++'s Consideration type.
  *
@@ -714,19 +768,19 @@ class UtilityFunction
 class Consideration
 {
   constructor(parentDecision, id, considerationText) {
-    let transformText = transformExpression.exec(considerationText);
-    let transformType = transformText[1];
-    let transformArguments = transformText[2].split(',').filter(Boolean);
-    let transformInputStart = inputExpression.exec(considerationText);
-    let inputStartPos = transformInputStart.index+transformInputStart[0].length;
-    let inputEndPos = findClosingBracket(considerationText, inputStartPos, 'curly');
+    let splineInfo = splineExpression.exec(considerationText);
+    let splineType = splineInfo[1];
+    let splinePoints = splineInfo[2];
+    let utilityFunctionStartPos = splineInfo.index + splineInfo[0].length;
+    let utilityFunctionLength = findClosingBracket(considerationText, utilityFunctionStartPos, 'curly')
+      - utilityFunctionStartPos;
 
     this.id = id;
     this.parentDecision = parentDecision;
     this.description = new Description(descriptionExpression.exec(considerationText)[1]);
     this.range = new Range(rangeExpression.exec(considerationText));
-    this.transform = new Transform(this.parentDecision.id, this.id, this.range, transformType, transformArguments);
-    this.utilityFunction = new UtilityFunction(considerationText.substr(inputStartPos, inputEndPos - inputStartPos));
+    this.spline = new Spline(this.parentDecision.id, this.id, this.range, splineType, splinePoints);
+    this.utilityFunction = new UtilityFunction(considerationText.substr(utilityFunctionStartPos, utilityFunctionLength));
   }
 
   toHtml() {
@@ -740,7 +794,7 @@ class Consideration
         .prop('id', 'consideration_' + this.parentDecision.id + '_' + this.id)
         .append(this.description.toHtml())
         .append(this.range.toHtml())
-        .append(this.transform.toHtml())
+        .append(this.spline.toHtml())
         .append(this.utilityFunction.toHtml()));
     out.accordion({
       active: false,
@@ -757,7 +811,7 @@ class Consideration
     return 'consideration(\n'
       + this.description.toCpp() + ',\n'
       + this.range.toCpp() + ',\n'
-      + this.transform.toCpp() + ',\n'
+      + this.spline.toCpp() + ',\n'
       + this.utilityFunction.toCpp() + '\n'
       + ')';
   }
@@ -769,13 +823,7 @@ class Consideration
       if (elementStack.length !== 1) {
         return false;
       }
-      return this.range.update(elementStack[0]) && this.transform.visualization.update();
-    }
-    else if (top.hasClass('transform')) {
-      if (elementStack.length !== 1) {
-        return false;
-      }
-      return this.transform.update(elementStack[0]);
+      return this.range.update(elementStack[0]) && this.spline.updateRange(this.range);
     }
     else if (!elementStack.length) {
       if (top.hasClass('description')) {
@@ -785,7 +833,6 @@ class Consideration
         return this.utilityFunction.update(top);
       }
     }
-    console.error('Update is not yet implemented for Transforms');
     return false;
   }
 
@@ -796,372 +843,6 @@ class Consideration
   duplicate() {
     this.parentDecision.duplicateConsideration(this.id);
   }
-}
-
-class Visualization
-{
-  constructor(transform) {
-    this.height = 200;
-    this.width = 400;
-    this.transform = transform;
-    this.type = this.transform.type;
-    this.decisionId = this.transform.decisionId;
-    this.considerationId = this.transform.considerationId;
-    this.range = this.transform.range;
-    this.args = this.transform.args;
-
-    this.name = 'visualisation_' + this.decisionId + '_' + this.considerationId;
-    this.data = [];
-  }
-
-  scale(value, min, max) {
-    return (value - min) / (max - min);
-  }
-
-  /*
-  clip(float value, float min=0.0, float max=1.0) {
-    return value > max ? max : value < min ? min : value;
-  }
-  */
-
-  generateData() {
-    let min = this.range.minRange;
-    let max = this.range.maxRange;
-    let step = (max-min)/100.0;
-    switch(this.type) {
-      case 'Binary':
-        let threshold = parseFloat(this.args[0]);
-        for (let i = min; i < max; i += step) {
-          let val = 0.0;
-          if (i >= threshold) val = 1.0;
-          this.data.push({x: i , y: val});
-        }
-        break;
-
-      case 'Exponential':
-        let base = parseFloat(this.args[0]);
-        for (let i = min; i < max; i += step) {
-          // scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
-          let val = this.scale(Math.pow(base, i), Math.pow(base, min), Math.pow(base, max));
-          this.data.push({x: i , y: val});
-        }
-        break;
-
-      case 'Identity':
-        for (let i = min; i < max; i += step) {
-          this.data.push({x: i , y: this.scale(i, min, max)});
-        }
-        break;
-
-      case 'Inverted':
-        for (let i = min; i < max; i += step) {
-          this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
-        }
-        break;
-
-      case 'Linear':
-        /*
-        let slope = parseFloat(this.args[0]);
-        let intercept = parseFloat(this.args[1]);
-
-        for (let i = min; i < max; i += step) {
-          let val = this.clip(slope * this.scale(value, min, max) + intercept);
-          this.data.push({x: i , y: 1.0 - this.scale(i, min, max)});
-        }
-
-        });
-        break;
-        */
-      case 'Power':
-
-        break;
-    }
-    /*
-    Transform Binary(float threshold) {
-      return Transform([threshold](float value, float, float) {
-          if (value >= (float) threshold)
-            return 1.f;
-          return 0.f;
-      });
-    }
-
-    Transform Exponential(float base) {
-      return Transform([base](float value, float min, float max) {
-          return scale(std::pow(base, value), std::pow(base, min), std::pow(base, max));
-      });
-    }
-
-    Transform Identity() {
-      return Transform([](float value, float min, float max) {
-        return scale(value, min, max);
-      });
-    }
-
-    Transform Inverted() {
-      return Transform([](float value, float min, float max) {
-        return 1.f - scale(value, min, max);
-      });
-    }
-
-    Transform Linear(float slope, float intercept) {
-      return Transform([slope, intercept](float value, float min, float max) {
-        return clip(slope * scale(value, min, max) + intercept);
-      });
-    }
-
-    Transform Power(float power) {
-      return Transform([power](float value, float min, float max) {
-          return scale(std::pow(value, power), std::pow(min, power), std::pow(max, power));
-      });
-    }
-    */
-
-    for (let entry of this.data) {
-      if (entry.y > 1) entry.y = 1;
-      if (entry.y < 0) entry.y = 0
-    }
-  }
-
-  static get margins() {
-    return {
-      top: 20,
-      right: 20,
-      bottom: 20,
-      left: 50
-    };
-  }
-
-  xRange() {
-    return d3.scale.linear().range([
-      Visualization.margins.left,
-      this.width - Visualization.margins.right
-    ])
-      .domain([
-        d3.min(this.data, function(d) {
-          return d.x;
-        }),
-        d3.max(this.data, function(d) {
-          return d.x;
-        })]);
-  }
-
-  xAxis() {
-    return d3.svg.axis()
-      .scale(this.xRange())
-      .tickSize(1)
-      .tickSubdivide(true);
-  }
-
-  yRange() {
-    return d3.scale.linear().range([
-      this.height - Visualization.margins.top,
-      Visualization.margins.bottom
-    ])
-      .domain([this.range.minRange, this.range.maxRange]);
-  }
-
-  yAxis() {
-    return d3.svg.axis()
-      .scale(this.yRange())
-      .tickSize(1)
-      .orient('left')
-      .tickSubdivide(true);
-  }
-
-  lineFunc() {
-    let that = this;
-    return d3.svg.line()
-      .x(function(d) {
-        return that.xRange()(d.x);
-      })
-      .y(function(d) {
-        return that.yRange()(d.y);
-      })
-      .interpolate('linear');
-  }
-
-  initialize() {
-    this.generateData();
-    let vis = d3.select('#' + this.name);
-
-    vis.append('svg:g')
-      .attr('class', 'x-axis')
-      .attr('transform', 'translate(0,' + (this.height - Visualization.margins.bottom) + ')')
-      .call(this.xAxis());
-
-    vis.append('svg:g')
-      .attr('class', 'y-axis')
-      .attr('transform', 'translate(' + Visualization.margins.left + ',0)')
-      .call(this.yAxis());
-
-    vis.append('svg:path')
-      .attr('class', 'path')
-      .attr('d', this.lineFunc()(this.data))
-      .attr('stroke', 'blue')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none');
-  }
-
-  // Should read values from corresponding fields when their values have
-  // changed and update the data and axis
-  update() {
-    this.type = this.transform.type;
-    this.range = this.transform.range;
-    this.args = this.transform.args;
-
-    let change_time = 750;
-    this.generateData();
-    let vis = d3.select('#' + this.name).transition();
-
-    vis.select('.x-axis')
-      .duration(change_time)
-      .call(this.xAxis());
-
-    vis.select('.y-axis')
-      .duration(change_time)
-      .call(this.yAxis());
-
-    vis.select('.path')
-      .duration(change_time)
-      .attr('d', this.lineFunc()(this.data));
-
-    return true;
-  }
-
-  toHtml() {
-    return $('<div>')
-      .data('instance', this)
-      .addClass('plot_container')
-      .append($('<svg>')
-        .prop('id', this.name)
-        .prop('width', this.width)
-        .prop('height', this.height));
-  }
-
-  toCpp() {
-    return '';
-  }
-}
-
-/**
- * Wrapper for C++'s Transform type.
- */
-class Transform
-{
-  static get valid() {
-    return {
-      'Binary': ['threshold'],
-      'Exponential': ['base'],
-      'Identity': [],
-      'Inverted': [],
-      'Linear': ['slope', 'intercept'],
-      'Power': ['power']
-    };
-  }
-
-  constructor(decId, conId, range, type, args) {
-    if (!(type in Transform.valid)) {
-      throw new Error('Transform "' + type + '" does not exist');
-    }
-    let arity = Transform.valid[type].length;
-    if (args.length !== arity) {
-      throw new Error('Transform "' + type + '" should have '
-        + arity + ' arguments, but received '
-        + args.length + ' arguments');
-    }
-    this.decisionId = decId;
-    this.considerationId = conId;
-    this.range = range;
-    this.type = type;
-    this.args = args.map(function (arg) { return arg.trim(); });
-
-    this.visualization = new Visualization(this);
-    //this.visualization = new Visualization(this.type, this.decisionId, this.considerationId, this.range, this.args);
-  }
-
-  toHtml() {
-    const args = this.args;
-    let out = $('<div>')
-      .data('instance', this)
-      .addClass('transform');
-    let types = $('<select>')
-      .addClass('transform-type')
-      .change(function() { showRelevantTransformArguments(this, args); });
-
-    out.append(types);
-
-    for (let transformType in Transform.valid) {
-      let transformArgs = Transform.valid[transformType];
-
-      types.append($('<option>')
-        .prop('selected', transformType === this.type)
-        .val(transformType)
-        .text(transformType));
-
-      for (let transformArg of transformArgs) {
-        out.append($('<input>')
-          .addClass('transform-argument')
-          .addClass(transformType)
-          .addClass(transformArg)
-          .prop('type', 'text')
-          .prop('placeholder', transformArg));
-      }
-    }
-
-    showRelevantTransformArguments(types, this.args);
-    return out;
-  }
-
-  toCpp() {
-    return 'Transform::'
-      + this.type
-      + '('
-      + this.args.join(', ')
-      + ')';
-  }
-
-  update(element) {
-    let successful = false;
-    if (element.hasClass('transform-type')) {
-      let type = element.val();
-      if (!(type in Transform.valid)) {
-        throw new Error('Transform "' + this.type + '" does not exist');
-      }
-      let arity = Transform.valid[type].length;
-      this.type = type;
-      this.args = new Array(arity);
-      for (let i = 0; i < Transform.valid[type]; i++) {
-        let argName = Transform.valid[type][i];
-        let argElement = $(element).siblings('.transform-argument + .' + this.type + ' + .' + argName);
-        this.args[i] = parseFloat(argElement.val());
-      }
-      successful = true;
-    }
-    else if (element.hasClass('transform-argument')) {
-      if (element.hasClass(this.type)) {
-        for (let i = 0; i < Transform.valid[this.type].length; i++) {
-          let argName = Transform.valid[this.type][i];
-          if (element.hasClass(argName)) {
-            this.args[i] = element.val();
-            successful = true;
-            break;
-          }
-        }
-      }
-    }
-    return successful ? this.visualization.update(this) : false;
-  }
-}
-
-
-function showRelevantTransformArguments(transformTypeTag, argValues) {
-  let transformArguments = $(transformTypeTag).siblings('.transform-argument');
-  transformArguments.hide();
-  let displayArguments = transformArguments.filter('.' + $(transformTypeTag).val());
-  displayArguments.each(function (i, element) {
-    $(element).val(argValues[i]);
-  });
-  displayArguments.show();
 }
 
 function createLabel(content, labelClass) {
@@ -1317,7 +998,6 @@ function readDecisionFile(evt) {
       let content = e.target.result;
       intelligence = new Intelligence(content);
       $('#intelligence_container').append(intelligence.toHtml());
-      intelligence.initializeVisualizations();
     };
     r.readAsText(f);
   } else {
