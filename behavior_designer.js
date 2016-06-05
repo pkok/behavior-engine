@@ -407,10 +407,8 @@ class Action
   }
 
   toHtml() {
-    return $('<div>')
-      .data('instance', this)
-      .append($('<div>').text('Action:'))
-      .append($('<textarea>')
+    return $('<div>').text('Action:')
+      .add($('<textarea>')
           .data('instance', this)
           .addClass('action')
           .prop('placeholder', 'action')
@@ -683,9 +681,8 @@ class UtilityFunction
   }
   
   toHtml() {
-    return $('<div>')
-      .append($('<div>').text('Utility Function:'))
-      .append($('<textarea>')
+    return $('<div>').text('Utility Function:')
+      .add($('<textarea>')
           .data('instance', this)
           .addClass('utility_function')
           .prop('placeholder', 'utility function')
