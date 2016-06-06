@@ -1295,6 +1295,7 @@ function readGlobalsFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       globals = new Globals(content);
+      $('#globals_container').empty();
       $('#globals_container').append(globals.toHtml());
     };
     r.readAsText(f);
@@ -1316,6 +1317,7 @@ function readDecisionFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       intelligence = new Intelligence(content);
+      $('#intelligence_container').empty();
       $('#intelligence_container').append(intelligence.toHtml());
       intelligence.initializeVisualizations();
     };
