@@ -704,6 +704,15 @@ window.addEventListener('storage', function (e) {
 });
 
 class Spline {
+  static get valid() {
+    return {
+      'Linear': 'linear',
+      'StepBefore': 'step-before',
+      'StepAfter': 'step-after',
+      'Monotone': 'monotone'
+    };
+  }
+  
   static findById(splineId) {
     let decisionId = window.sessionStorage.getItem(splineId + ',decision');
     let considerationId = window.sessionStorage.getItem(splineId + ',consideration');
@@ -720,18 +729,36 @@ class Spline {
     this.id = 'spline_' + decisionId + '_' + considerationId;
     this.range = range;
     this.points = splinePoints;
+    this.setInterpolation(interpolation);
     this.interpolation = interpolation;
 
     window.sessionStorage.setItem(this.id + ',decision', decisionId);
     window.sessionStorage.setItem(this.id + ',consideration', considerationId);
     window.sessionStorage.setItem(this.id + ',points', this.points);
-    window.sessionStorage.setItem(this.id + ',interpolation', this.interpolation);
     window.sessionStorage.setItem(this.id + ',minRange', this.range.minRange);
     window.sessionStorage.setItem(this.id + ',maxRange', this.range.maxRange);
   }
 
+  setInterpolation(interpolation) {
+    this.interpolation = interpolation;
+    window.sessionStorage.setItem(this.id + ',interpolation', Spline.valid[interpolation]);
+  }
+  
   toHtml() {
+    let spline = this;
+    let types = $('<select>');
+    for (let t in Spline.valid) {
+      types.append($('<option>')
+        .val(t)
+        .text(t)
+        .prop('selected', t === this.interpolation));
+    }
+    types.change(function() { spline.setInterpolation($(this).val()); });
     return $('<div>')
+      .append($('<div>')
+        .append($('<label>')
+            .text('Interpolation: ')
+            .append(types)))
       .append($('<iframe>')
         .addClass('spline')
         .width(500)

@@ -7,15 +7,9 @@
   <style>
 
     body {
-      font: 13px sans-serif;
-      position: relative;
       margin: 0;
       padding: 0;
       overflow: hidden;
-    }
-
-    form {
-      position: absolute;
     }
 
     rect {
@@ -65,16 +59,9 @@
 
     $(document).ready(function () {
       var width = 500,//$(window).width(),
-          height = 300 - $('label').height();//$(window).height() - $('form').height();
+          height = 300;// - d3.select('label').attr('height');//$(window).height() - $('form').height();
 
       var window_id = getUrlParameter('id');
-
-      const INTERPOLATION_TYPES = {
-        'Linear': 'linear',
-        'StepBefore': 'step-before',
-        'StepAfter': 'step-after',
-        'Monotone': 'monotone'
-      };
 
       var decisionId = window.sessionStorage.getItem(window_id + ',decision');
       var utility_score = parseFloat(window.sessionStorage.getItem('decision_' + decisionId + ',utilityScore'));
@@ -97,7 +84,7 @@
 
       var interpolation = window.sessionStorage.getItem(window_id + ',interpolation');
       if (!interpolation) {
-        interpolation = Object.keys(INTERPOLATION_TYPES)[0];
+        interpolation = 'linear';
       }
 
       var points = window.sessionStorage.getItem(window_id + ',points');
@@ -134,15 +121,6 @@
           .on("mousemove", mousemove)
           .on("mouseup", mouseup)
           .on("keydown", keydown);
-
-      d3.select("#interpolate")
-          .on("change", change)
-          .selectAll("option")
-          .data(Object.keys(INTERPOLATION_TYPES))
-          .enter().append("option")
-          .attr("value", function(d) { return d; })
-          .attr("selected", function(d) { return d === interpolation; })
-          .text(function(d) { return d; });
 
       function pointCppToJs(point) {
         let p = [];
@@ -184,7 +162,7 @@
 
       function redraw() {
         points.sort(function (a, b) { return a[0] - b[0]; });
-        line.interpolate(INTERPOLATION_TYPES[interpolation]);
+        line.interpolate(interpolation);
         window.sessionStorage.setItem(window_id + ',points', pointsToString(points));
         window.sessionStorage.setItem(window_id + ',interpolation', interpolation);
 
@@ -212,11 +190,6 @@
           d3.event.preventDefault();
           d3.event.stopPropagation();
         }
-      }
-
-      function change() {
-        interpolation = this.value;
-        redraw();
       }
 
       function mousedown() {
@@ -257,7 +230,9 @@
         if (e.key.startsWith(window_id)) {
           let specifier = e.key.split(',');
           if (specifier[1] === 'minRange') minRange = parseFloat(e.newValue);
-          if (specifier[1] === 'maxRange') maxRange = parseFloat(e.newValue);
+          else if (specifier[1] === 'maxRange') maxRange = parseFloat(e.newValue);
+          else if (specifier[1] === 'utilityScore') utility_score = parseFloat(e.newValue);
+          else if (specifier[1] === 'interpolation') { interpolation = e.newValue; redraw(); }
         }
       });
     });
@@ -266,9 +241,5 @@
 
 
 <body>
-<form>
-  <label for="interpolate">Interpolate:</label>
-  <select id="interpolate"></select><br>
-</form>
 </body>
 </html>
