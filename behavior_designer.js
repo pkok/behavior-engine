@@ -1004,6 +1004,7 @@ function readGlobalsFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       globals = new Globals(content);
+      $('#globals_container').empty();
       $('#globals_container').append(globals.toHtml());
     };
     r.readAsText(f);
@@ -1025,6 +1026,7 @@ function readDecisionFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       intelligence = new Intelligence(content);
+      $('#intelligence_container').empty();
       $('#intelligence_container').append(intelligence.toHtml());
     };
     r.readAsText(f);
@@ -1034,7 +1036,7 @@ function readDecisionFile(evt) {
 }
 
 function downloadHeaderFile(content, fileName) {
-  let data = new File([content], fileName, {type: 'text/x-h'});
+  let data = new File([content], fileName, {type: 'application/prs.decision-engine'});
   let textFile = window.URL.createObjectURL(data);
   window.open(textFile);
   window.URL.revokeObjectURL(textFile);
@@ -1075,12 +1077,14 @@ $(document).ready(function() {
     mouseLastHoverSection = $(event.target).prop('id');
   });
   
-  $(window).keypress(function (event) {
-    if (!(event.which == 115 && event.ctrlKey) && !(event.which == 19)) return true;
-    if (mouseLastHoverSection === 'globals_section') {
+  $(window).keydown(function(event) {
+    if (!((event.which == 115 || event.which == 83) && event.ctrlKey) && !(event.which == 19)) return true;
+    if (mouseLastHoverSection === 'globals_section' && globals !== null) {
+      // downloadHeaderFile(globals.toCpp(), $('#globals_file').val());
       $('#getGlobals').click();
     }
-    else if (mouseLastHoverSection === 'decisions_section') {
+    else if (mouseLastHoverSection === 'decisions_section' && intelligence != null) {
+      // downloadHeaderFile(intelligence.toCpp(), $('#decisions_file').val());
       $('#getDecisions').click();
     }
     event.preventDefault();

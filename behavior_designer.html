@@ -21,7 +21,6 @@
 
           $(':button#getGlobals').click(function () {
             if (globals !== null) {
-              console.log(globals.toCpp());
               downloadHeaderFile(globals.toCpp(), $('#globals_file').val());
             }
           });
