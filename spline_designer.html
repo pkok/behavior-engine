@@ -80,12 +80,18 @@
       var utility_score = parseFloat(window.sessionStorage.getItem('decision_' + decisionId + ',utilityScore'));
 
       var minRange = window.sessionStorage.getItem(window_id + ',minRange');
-      if (!minRange) {
+      if (minRange) {
+        minRange = parseFloat(minRange);
+      }
+      else {
         minRange = 0;
       }
 
       var maxRange = window.sessionStorage.getItem(window_id + ',maxRange');
-      if (!maxRange) {
+      if (maxRange) {
+        maxRange = parseFloat(maxRange);
+      }
+      else {
         maxRange = 1;
       }
 
@@ -103,7 +109,6 @@
           return [i * width / 5, 50 + Math.random() * (height - 100)];
         });
       }
-      console.log("*** " + points.toString());
 
       var dragged = null,
           selected = points[0];
@@ -136,26 +141,9 @@
           .data(Object.keys(INTERPOLATION_TYPES))
           .enter().append("option")
           .attr("value", function(d) { return d; })
+          .attr("selected", function(d) { return d === interpolation; })
           .text(function(d) { return d; });
 
-      /* TODO
-      Als data van C++ komt, dan zitten de punten op waarden
-            utility_score |
-                          |
-                          |
-                          |
-                        0 +----------------------
-                          minRange       maxRange
-
-       Als data van deze designer komt, dan zitten de punten op waarden
-                   0 |
-                     |
-                     |
-                     |
-              height +----------------------
-                     0                 width
-       Dus even transformeren!
-       */
       function pointCppToJs(point) {
         let p = [];
         p.push((point[0] - minRange) / (maxRange - minRange) * width);
@@ -190,20 +178,15 @@
           ps.push(pointJsToCpp(p));
         }
         return JSON.stringify(ps)
-            .replace('[', '{', 'g')
-            .replace(']', '}', 'g');
+            .replace(/\[/g, '{')
+            .replace(/\]/g, '}');
       }
 
       function redraw() {
         points.sort(function (a, b) { return a[0] - b[0]; });
-        console.log('------1 ' + points.toString());
-        console.log(points);
+        line.interpolate(INTERPOLATION_TYPES[interpolation]);
         window.sessionStorage.setItem(window_id + ',points', pointsToString(points));
-        console.log('------2 ' + points.toString());
-        console.log(points);
         window.sessionStorage.setItem(window_id + ',interpolation', interpolation);
-        console.log('------3 ' + points.toString());
-        console.log(points);
 
         svg.select("path").attr("d", line);
 
@@ -232,7 +215,7 @@
       }
 
       function change() {
-        line.interpolate(INTERPOLATION_TYPES[this.value]);
+        interpolation = this.value;
         redraw();
       }
 

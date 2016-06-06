@@ -731,17 +731,18 @@ class Spline {
   }
 
   toHtml() {
-    return $('<iframe>')
-      .addClass('spline')
-      .width(500)
-      .height(300)
-      .prop('src', 'spline_designer.html?id=' + this.id);
+    return $('<div>')
+      .append($('<iframe>')
+        .addClass('spline')
+        .width(500)
+        .height(300)
+        .prop('src', 'spline_designer.html?id=' + this.id));
   }
 
   toCpp() {
     return 'Spline::' + this.interpolation + '('
       + this.points
-      + '),\n';
+      + ')\n';
   }
   
   update(key, value) {
