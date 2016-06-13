@@ -136,12 +136,20 @@
         return p;
       }
 
+      function numberJsToCppString(number) {
+        return number.toString() + (Number.isInteger(number) ? '.f' : 'f');
+      }
+
+      function pointJsToCppString(point) {
+        return '{' + pointJsToCpp(point).map(numberJsToCppString).join(', ') + '}';
+      }
+
       function stringToPoints(pointString) {
         let pointsStripped = pointString.replace(/\{\s*\{/, '{');
         pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
 
         let points = [];
-        let pattern = /\{(\s*\d+.?\d*)\s*,\s*(\s*\d+.?\d*)\}/g;
+        let pattern = /\{(\s*\d+.?\d*)f?\s*,\s*(\s*\d+.?\d*)f?\}/g;
         let match = pattern.exec(pointsStripped);
         while (match !== null) {
           points.push(pointCppToJs([parseFloat(match[1]), parseFloat(match[2])]));
@@ -151,13 +159,7 @@
       }
 
       function pointsToString(points) {
-        let ps = [];
-        for (let p of points) {
-          ps.push(pointJsToCpp(p));
-        }
-        return JSON.stringify(ps)
-            .replace(/\[/g, '{')
-            .replace(/\]/g, '}');
+        return '{' + points.map(pointJsToCppString).join(',') + '}';
       }
 
       function redraw() {
