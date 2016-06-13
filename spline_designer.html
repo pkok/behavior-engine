@@ -61,7 +61,7 @@
       var width = 500,//$(window).width(),
           height = 300;// - d3.select('label').attr('height');//$(window).height() - $('form').height();
 
-      var window_id = getUrlParameter('id');
+      var window_id = getUrlParameter('id') || '';
 
       var decisionId = window.sessionStorage.getItem(window_id + ',decision');
       var utility_score = parseFloat(window.sessionStorage.getItem('decision_' + decisionId + ',utilityScore'));
@@ -213,17 +213,22 @@
       }
 
       function keydown() {
-        if (!selected) return;
         switch (d3.event.keyCode) {
           case 8: // backspace
           case 46: { // delete
-            var i = points.indexOf(selected);
-            points.splice(i, 1);
-            selected = points.length ? points[i > 0 ? i - 1 : 0] : null;
-            redraw();
+            remove_point();
             break;
           }
         }
+      }
+
+      function remove_point() {
+        if (!selected) return;
+        var i = points.indexOf(selected);
+        if (i == 0 || i == points.length-1) return;
+        points.splice(i, 1);
+        selected = points.length ? points[i > 0 ? i - 1 : 0] : null;
+        redraw();
       }
 
       window.addEventListener('storage', function (e) {
@@ -233,7 +238,16 @@
           else if (specifier[1] === 'maxRange') maxRange = parseFloat(e.newValue);
           else if (specifier[1] === 'utilityScore') utility_score = parseFloat(e.newValue);
           else if (specifier[1] === 'interpolation') { interpolation = e.newValue; redraw(); }
+          else if (specifier[1] === 'remove' && e.newValue === 'true') {
+            window.sessionStorage.removeItem(window_id + ',remove');
+            remove_point();
+          }
         }
+      });
+
+      $(document).mouseleave(function() {
+        selected = null;
+        redraw();
       });
     });
   </script>

@@ -696,13 +696,6 @@ class UtilityFunction
   }
 }
 
-window.addEventListener('storage', function (e) {
-  if (intelligence.decisions && e.key.startsWith('spline')) {
-    let specifier = e.key.split(',');
-    Spline.findById(specifier[0]).update(specifier[1], e.newValue);
-  }
-});
-
 class Spline {
   static get valid() {
     return {
@@ -755,12 +748,14 @@ class Spline {
     }
     types.change(function() { spline.setInterpolation($(this).val()); });
     return $('<div>')
+      .data('instance', spline)
       .append($('<div>')
         .append($('<label>')
             .text('Interpolation: ')
             .append(types)))
       .append($('<iframe>')
         .addClass('spline')
+        .prop('id', this.id)
         .width(500)
         .height(300)
         .prop('src', 'spline_designer.html?id=' + this.id));
@@ -1072,22 +1067,47 @@ function updateOnChange(element, event) {
 
 $(document).ready(function() {
   let mouseLastHoverSection = 'decisions_section';
+  let splineHovered = null;
 
   $('#globals_section + #decisions_section').mouseenter(function (event) {
     mouseLastHoverSection = $(event.target).prop('id');
   });
   
+  $(document)
+    .delegate('iframe', 'mouseenter', function (event) {
+      splineHovered = $(event.target).prop('id');
+    })
+    .delegate('iframe', 'mouseleave', function () {
+      splineHovered = null;
+    })
+  ;
+
   $(window).keydown(function(event) {
-    if (!((event.which == 115 || event.which == 83) && event.ctrlKey) && !(event.which == 19)) return true;
-    if (mouseLastHoverSection === 'globals_section' && globals !== null) {
-      // downloadHeaderFile(globals.toCpp(), $('#globals_file').val());
-      $('#getGlobals').click();
+    let eventKey = String.fromCodePoint(event.which);
+    window.sessionStorage.setItem('key', eventKey);
+    if (event.ctrlKey && (eventKey === 's' || eventKey === 'S')) {
+      if (mouseLastHoverSection === 'globals_section' && globals !== null) {
+        $('#getGlobals').click();
+        event.preventDefault();
+      }
+      else if (mouseLastHoverSection === 'decisions_section' && intelligence != null) {
+        $('#getDecisions').click();
+        event.preventDefault();
+      }
     }
-    else if (mouseLastHoverSection === 'decisions_section' && intelligence != null) {
-      // downloadHeaderFile(intelligence.toCpp(), $('#decisions_file').val());
-      $('#getDecisions').click();
+    else if (event.which === 8 || event.which === 46) {// Backspace or Delete
+      if (splineHovered !== null) {
+        window.sessionStorage.setItem(splineHovered + ',remove', true);
+        event.preventDefault();
+      }
     }
-    event.preventDefault();
-    return false;
   });
+  
+  window.addEventListener('storage', function (e) {
+    if (intelligence.decisions && e.key.startsWith('spline')) {
+      let specifier = e.key.split(',');
+      Spline.findById(specifier[0]).update(specifier[1], e.newValue);
+    }
+  });
+
 });
