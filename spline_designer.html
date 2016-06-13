@@ -159,7 +159,7 @@
       }
 
       function pointsToString(points) {
-        return '{' + points.map(pointJsToCppString).join(',') + '}';
+        return '{' + points.map(pointJsToCppString).join(', ') + '}';
       }
 
       function redraw() {
@@ -233,7 +233,8 @@
         redraw();
       }
 
-      window.addEventListener('storage', function (e) {
+      $(window).on('storage', function (e) {
+        e = e.originalEvent;
         if (e.key.startsWith(window_id)) {
           let specifier = e.key.split(',');
           if (specifier[1] === 'minRange') minRange = parseFloat(e.newValue);

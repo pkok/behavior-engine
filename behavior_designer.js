@@ -22,7 +22,6 @@
 
 /* Regular expressions to parse the calls to DecisionEngine::addDecision */
 // Decision expressions
-const idNumberExpression        = /\d+\s*$/;
 const decisionExpression        = /addDecision\(/g;
 const nameExpression            = /name\(\s*['"](.*)['"]\s*\)\s*,/;
 const utilityExpression         = /UtilityScore::(.*)\s*,/;
@@ -125,7 +124,7 @@ class Intelligence
         // Prevent accordion to open after the sort has stopped.
         window.setTimeout(function () { ui.item.accordion('enable'); }, 30);
       },
-      update: function (event, ui) {
+      update: function () {
         that.updateDecisionOrder();
       }
     });
@@ -165,13 +164,12 @@ class Intelligence
       decision.update(elementStack);
       return true;
     }
-    console.error('Looking for decision#' + decisionIndex + ', but not found');
     return false
   }
 
   updateDecisionOrder() {
     let sortedDecisions = [];
-    for (let decision of $('#decision_container .decision')) {
+    for (let decision of $('#decision_container').find('.decision')) {
       sortedDecisions.push($(decision).data('instance'));
     }
     this.decisions = sortedDecisions;
@@ -999,8 +997,9 @@ function readGlobalsFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       globals = new Globals(content);
-      $('#globals_container').empty();
-      $('#globals_container').append(globals.toHtml());
+      $('#globals_container')
+        .empty()
+        .append(globals.toHtml());
     };
     r.readAsText(f);
   } else {
@@ -1021,8 +1020,9 @@ function readDecisionFile(evt) {
     r.onload = function (e) {
       let content = e.target.result;
       intelligence = new Intelligence(content);
-      $('#intelligence_container').empty();
-      $('#intelligence_container').append(intelligence.toHtml());
+      $('#intelligence_container')
+        .empty()
+        .append(intelligence.toHtml());
     };
     r.readAsText(f);
   } else {
@@ -1074,10 +1074,10 @@ $(document).ready(function() {
   });
   
   $(document)
-    .delegate('iframe', 'mouseenter', function (event) {
+    .on('mouseenter', 'iframe', function (event) {
       splineHovered = $(event.target).prop('id');
     })
-    .delegate('iframe', 'mouseleave', function () {
+    .on('mouseleave', 'iframe', function () {
       splineHovered = null;
     })
   ;
@@ -1103,7 +1103,8 @@ $(document).ready(function() {
     }
   });
   
-  window.addEventListener('storage', function (e) {
+  $(window).on('storage', function (e) {
+    e = e.originalEvent;
     if (intelligence.decisions && e.key.startsWith('spline')) {
       let specifier = e.key.split(',');
       Spline.findById(specifier[0]).update(specifier[1], e.newValue);
