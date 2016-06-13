@@ -65,14 +65,16 @@ class Globals
 
   toHtml() {
     let global = this;
-    return $('<textarea>')
-      .data('instance', this)
-      .addClass('globals')
-      .prop('placeholder', 'global variables')
-      .prop('rows', 10)
-      .prop('cols', 70)
-      .change(function (event) { return global.update($(event.target)); })
-      .val(this.cppCode);
+    return $('<label>')
+      .text('Globals: ')
+      .append($('<textarea>')
+        .data('instance', this)
+        .addClass('globals')
+        .prop('placeholder', 'global variables')
+        .prop('rows', 10)
+        .prop('cols', 70)
+        .change(function (event) { return global.update($(event.target)); })
+        .val(this.cppCode));
   }
 
   toCpp() {
@@ -195,12 +197,14 @@ class Name
   }
 
   toHtml() {
-    return $('<input>')
-      .data('instance', this)
-      .addClass('name')
-      .prop('type', 'text')
-      .prop('placeholder', 'name')
-      .val(this.name);
+    return $('<label>')
+      .text('Name: ')
+      .append($('<input>')
+        .data('instance', this)
+        .addClass('name')
+        .prop('type', 'text')
+        .prop('placeholder', 'name')
+        .val(this.name));
   }
 
   toCpp() {
@@ -228,12 +232,14 @@ class Description
   }
 
   toHtml() {
-    return $('<input>')
-      .data('instance', this)
-      .addClass('description')
-      .prop('type', 'text')
-      .prop('placeholder', 'description')
-      .val(this.description);
+    return $('<label>')
+      .text('Description: ')
+      .append($('<input>')
+        .data('instance', this)
+        .addClass('description')
+        .prop('type', 'text')
+        .prop('placeholder', 'description')
+        .val(this.description));
   }
 
   toCpp() {
@@ -285,7 +291,9 @@ class UtilityScore
         .val(utility)
         .text(utility));
     }
-    return out;
+    return $('<label>')
+      .text('Utility score: ')
+      .append(out);
   }
   
   toCpp() {
@@ -342,12 +350,13 @@ class Events
     let out = $('<ul>').addClass('events').data('instance', this);
     for (let event of Events.valid) {
       out.append($('<li>')
-        .append($('<input>')
-          .prop('type', 'checkbox')
-          .prop('checked', this.events.indexOf(event) !== -1)
-          .prop('name', event)
-          .val(event))
-        .append(document.createTextNode(event)));
+        .append($('<label>')
+          .text(event)
+          .prepend($('<input>')
+            .prop('type', 'checkbox')
+            .prop('checked', this.events.indexOf(event) !== -1)
+            .prop('name', event)
+            .val(event))));
     }
     return out;
   }
@@ -398,8 +407,9 @@ class Action
   }
 
   toHtml() {
-    return $('<div>').text('Action:')
-      .add($('<textarea>')
+    return $('<label>')
+      .append($('<div>').text('Action: '))
+      .append($('<textarea>')
           .data('instance', this)
           .addClass('action')
           .prop('placeholder', 'action')
@@ -626,16 +636,20 @@ class Range
     return $('<span>')
       .data('instance', this)
       .addClass('range')
-      .append($('<input>')
-        .addClass('min')
-        .prop('type', 'text')
-        .prop('placeholder', 'min')
-        .val(this.minRange))
-      .append($('<input>')
-        .addClass('max')
-        .prop('type', 'text')
-        .prop('placeholder', 'max')
-        .val(this.maxRange));
+      .append($('<label>')
+        .text('min range')
+        .append($('<input>')
+          .addClass('min')
+          .prop('type', 'text')
+          .prop('placeholder', 'min')
+          .val(this.minRange)))
+      .append($('<label>')
+        .text('max range')
+        .append($('<input>')
+          .addClass('max')
+          .prop('type', 'text')
+          .prop('placeholder', 'max')
+          .val(this.maxRange)));
   }
   
   toCpp() {
@@ -669,8 +683,9 @@ class UtilityFunction
   }
   
   toHtml() {
-    return $('<div>').text('Utility Function:')
-      .add($('<textarea>')
+    return $('<label>')
+      .append($('<div>').text('Utility function: '))
+      .append($('<textarea>')
           .data('instance', this)
           .addClass('utility_function')
           .prop('placeholder', 'utility function')
