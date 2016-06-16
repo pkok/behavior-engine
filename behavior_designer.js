@@ -708,7 +708,7 @@ class Spline {
     pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
 
     this.points = [];
-    let pattern = /\{(\s*\d+.?\d*)f?\s*,\s*(\s*\d+.?\d*)f?\}/g;
+    let pattern = /\{(\s*[-+]*\d*.?\d*)f?\s*,\s*(\s*[-+]*\d*.?\d*)f?\}/g;
     let match = pattern.exec(pointsStripped);
     while (match !== null) {
       // Transform coordinate system from (minRange,maxRange) x (0,1)
