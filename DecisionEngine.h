@@ -17,8 +17,11 @@
 #include <iostream>
 #endif
 
-#if defined(BHUMAN) || BHUMAN
+#if defined(BHUMAN) && BHUMAN
 #include "Representations/BehaviorControl/ActivationGraph.h"
+#include "Tools/Enum.h"
+
+#define DEFAULT_SCORE -1.0
 #endif
 
 /** Using these macros, writing addDecision becomes more readable and less
@@ -93,7 +96,9 @@ class DecisionException : public std::runtime_error {
  */
 class DecisionEngine {
   public:
+#if !defined(BHUMAN) || !BHUMAN
     DecisionEngine() = default;
+#endif
 
     /** Add a new Decision to the rules.
      *
@@ -131,6 +136,9 @@ class DecisionEngine {
         active_events.insert(e);
         sort_active_decisions();
       }
+#if defined(BHUMAN) && BHUMAN
+      initializeActivationGraph();
+#endif
     }
 
     /** Clear all known behaviors.
@@ -163,6 +171,13 @@ class DecisionEngine {
           });
       const auto& it = std::get<0>(active_events.insert(e));
       active_events.erase(it);
+#if defined(BHUMAN) && BHUMAN
+      initializeActivationGraph();
+#endif
+    }
+
+    const std::unordered_set<Event> getActiveEvents(){
+        return active_events;
     }
 
     /** Select the Decision with the highest score, and run its Action. */
@@ -185,7 +200,8 @@ class DecisionEngine {
       float highest_score = std::numeric_limits<float>::lowest();
       size_t best_index = 0;
 
-      for (size_t i = 0; i < active_rules.size(); ++i) {
+      size_t i = 0;
+      for (; i < active_rules.size(); ++i) {
         const Decision& decision = std::get<1>(active_rules[i]);
         float utility = static_cast<float>(decision.getUtility());
 #ifdef NDEBUG
@@ -202,8 +218,8 @@ class DecisionEngine {
           break;
         }
         float score = decision.computeScore();
-#if defined(BHUMAN) || BHUMAN
-        updateActivationGraph(decision.getName(), score);
+#if defined(BHUMAN) && BHUMAN
+        updateActivationGraph(i, score);
 #endif
 #ifdef NDEBUG
         std::cout << "    score: " << score << "\n";
@@ -222,6 +238,9 @@ class DecisionEngine {
           }
         }
       }
+#if defined(BHUMAN) && BHUMAN
+      finalizeUpdateActivationGraphFromDecision(i + 1);
+#endif
       return std::get<1>(active_rules[best_index]).get();
     }
 
@@ -235,7 +254,22 @@ class DecisionEngine {
       return actives;
     }
 
-#if defined(BHUMAN) || BHUMAN
+#if defined(BHUMAN) && BHUMAN
+    DecisionEngine()
+      : activation_graph(dummy_activation_graph)
+    {
+    }
+
+    DecisionEngine(ActivationGraph& a)
+      : activation_graph(a)
+    {
+    }
+
+    void setActivationGraph(ActivationGraph& a)
+    {
+      activation_graph = std::reference_wrapper<ActivationGraph>(a);
+    }
+
     ActivationGraph getActivationGraph() {
       return activation_graph;
     }
@@ -248,8 +282,9 @@ class DecisionEngine {
     std::vector<Rule> active_rules;
     std::unordered_set<Event> active_events;
     std::unordered_set<Event> updated_events;
-#if defined(BHUMAN) || BHUMAN
-    ActivationGraph activation_graph;
+#if defined(BHUMAN) && BHUMAN
+    std::reference_wrapper<ActivationGraph> activation_graph;
+    ActivationGraph dummy_activation_graph;
 #endif
 
     /** Sort Decisions in rules and active_rules based on their UtilityScore.
@@ -282,7 +317,23 @@ class DecisionEngine {
           });
     }
 
-    void updateActivationGraph(const std::string& name, float score) {
-      // TODO
+#if defined(BHUMAN) && BHUMAN
+    void initializeActivationGraph() {
+        activation_graph.get().dlist.clear();
+        activation_graph.get().dlist.reserve(active_rules.size());
+        for (size_t i = 0; i < active_rules.size(); i++) {
+            activation_graph.get().dlist.emplace_back(std::get<1>(active_rules[i]).get().getName(), DEFAULT_SCORE);
+        }
     }
+
+    void updateActivationGraph(size_t index, float score) {
+        activation_graph.get().dlist[index].score = score;
+    }
+
+    void finalizeUpdateActivationGraphFromDecision(size_t updated_index) {
+        for (size_t i = updated_index; i < active_rules.size(); i++) {
+            updateActivationGraph(i, DEFAULT_SCORE);
+        }
+    }
+#endif
 };
