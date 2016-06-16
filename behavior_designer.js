@@ -690,8 +690,8 @@ class Spline {
   }
 
   setPoints(pointString) {
-    let width = window.sessionStorage.getItem(this.id + ',width');
-    let height = window.sessionStorage.getItem(this.id + ',height');
+    let width = parseFloat(window.sessionStorage.getItem(this.id + ',width'));
+    let height = parseFloat(window.sessionStorage.getItem(this.id + ',height'));
     
     let pointsStripped = pointString.replace(/\{\s*\{/, '{');
     pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
@@ -985,7 +985,7 @@ function downloadHeaderFile(content, fileName) {
   window.URL.revokeObjectURL(textFile);
 }
 
-$(document).ready(function() {
+$(function() {
   let mouseLastHoverSection = 'decisions_section';
   let splineHovered = null;
 

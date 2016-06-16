@@ -62,11 +62,11 @@
       }
     }
 
-    $(document).ready(function () {
+    $(function () {
       var window_id = getUrlParameter('id') || '';
 
-      var width = window.sessionStorage.getItem(window_id + ',width') || 500,//$(window).width(),
-          height = window.sessionStorage.getItem(window_id + ',height') || 300;//$(window).height();
+      var width = parseFloat(window.sessionStorage.getItem(window_id + ',width')) || 500,//$(window).width(),
+          height = parseFloat(window.sessionStorage.getItem(window_id + ',height')) || 300;//$(window).height();
 
       var interpolation = window.sessionStorage.getItem(window_id + ',interpolation') || 'linear';
 
