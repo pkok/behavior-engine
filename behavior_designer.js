@@ -648,12 +648,13 @@ class Spline {
   }
 
   constructor(consideration, interpolation, splinePoints) {
-    window.sessionStorage.setItem(this.id + ',width', 500);
-    window.sessionStorage.setItem(this.id + ',height', 300);
-    
     this.decisionId = consideration.parentDecision.id;
     this.considerationId = consideration.id;
     this.id = 'spline_' + this.decisionId + '_' + this.considerationId;
+    
+    window.sessionStorage.setItem(this.id + ',width', 500);
+    window.sessionStorage.setItem(this.id + ',height', 300);
+    
     this.parentConsideration = consideration;
     this.setPoints(splinePoints);
     this.setInterpolation(interpolation);
@@ -684,8 +685,8 @@ class Spline {
       .append($('<iframe>')
         .addClass('spline')
         .prop('id', this.id)
-        .width(500)
-        .height(300)
+        .width(window.sessionStorage.getItem(this.id + ',width'))
+        .height(window.sessionStorage.getItem(this.id + ',height'))
         .prop('src', 'spline_designer.html?id=' + this.id));
   }
 

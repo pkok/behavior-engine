@@ -35,6 +35,11 @@
       stroke: #ff9800;
     }
 
+    .grid_lines {
+      stroke: #90a4ae;
+      stroke-dasharray: 5, 15;
+      stroke-width: 0.5px;
+    }
   </style>
   <script src="scripts/d3.v3.min.js" charset="utf-8"></script>
   <script src="scripts/jquery-3.0.0.min.js"></script>
@@ -102,7 +107,28 @@
           .on("mouseup", mouseup)
           .on("keydown", keydown);
 
+      function drawGridLines(lineCount, className) {
+        svg.selectAll('line.horizontal')
+            .data(d3.range(height/lineCount, height, height/lineCount))
+            .enter().append('svg:line')
+            .attr('x1', 0)
+            .attr('y1', function(d){return d;})
+            .attr('x2', width)
+            .attr('y2', function(d){return d;})
+            .classed(className, true);
+
+        svg.selectAll('line.vertical')
+            .data(d3.range(width/lineCount, width, width/lineCount))
+            .enter().append('svg:line')
+            .attr('x1', function(d){return d;})
+            .attr('y1', 0)
+            .attr('x2', function(d){return d;})
+            .attr('y2', height)
+            .classed(className, true);
+      }
+
       function redraw() {
+        drawGridLines(4, 'grid_lines');
         points.sort(function (a, b) { return a[0] - b[0]; });
         line.interpolate(interpolation);
         window.sessionStorage.setItem(window_id + ',points', JSON.stringify(points));
