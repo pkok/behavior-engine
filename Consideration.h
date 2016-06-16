@@ -41,7 +41,7 @@ class Consideration {
     /** Computes the utility score of this Consideration.  */
     inline float computeScore() const
     {
-      return clip(scale(spline(utilityFunction()), min, max));
+      return clip(spline(scale(utilityFunction(), min, max)));
     }
 
   private:

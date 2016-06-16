@@ -15,7 +15,8 @@ namespace Spline {
   // pass by value so compiler can optimize this properly
   inline SplineFunction Linear(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points[0].x) { return points[0].y; }
+      if(x <= points.front().x) { return points.front().y; }
+      if(x >= points.back().x) { return points.back().y; }
 
       int count = points.size() - 1;
       for(int i = 0; i < count; ++i)
@@ -36,7 +37,8 @@ namespace Spline {
 
   inline SplineFunction StepBefore(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points[0].x) { return points[1].y; }
+      if(x <= points.front().x) { return points.front().y; }
+      if(x >= points.back().x) { return points.back().y; }
 
       int count = points.size() - 1;
       for(int i = 0; i < count; ++i)
@@ -53,7 +55,8 @@ namespace Spline {
 
   inline SplineFunction StepAfter(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points[0].x) { return points[0].y; }
+      if(x <= points.front().x) { return points.front().y; }
+      if(x >= points.back().x) { return points.back().y; }
 
       int count = points.size() - 1;
       for(int i = 0; i < count; ++i)
@@ -117,7 +120,8 @@ namespace Spline {
 
     return [=](float x)
     {
-      if(x == points.back().x) { return points.back().y; }
+      if(x <= points.front().x) { return points.front().y; }
+      if(x >= points.back().x) { return points.back().y; }
 
       int low = 0;
       int mid;
