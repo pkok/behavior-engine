@@ -487,7 +487,8 @@ class Decision
           .addClass('addConsideration')
           .addClass('control-add')
           .prop('type', 'button')
-          .val('\u2731')
+          .prop('title', 'Add a new Consideration')
+          .val('Add Consideration')
           .click(function() {
             decision.addEmptyConsideration();
           }))
