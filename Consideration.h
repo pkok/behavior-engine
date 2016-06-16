@@ -30,8 +30,8 @@ class Consideration {
       : description(description),
       utilityFunction(utilityFunction),
       spline(spline),
-      min(spline(min)),
-      max(spline(max))
+      min(min),
+      max(max)
     {}
 
     Consideration() = default;
