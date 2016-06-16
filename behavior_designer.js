@@ -12,9 +12,6 @@
  *   - toCpp(), which generates a string that is a partial C++ expression that
  *     represents this object.
  *   - toHtml(), which generates a HTML representation of this object.
- *   - update(jQueryElement) or update(arrayOfjQueryElements), which either
- *     adjusts the value of a type's field to reflect the state of the HTML
- *     document, or delegates the update to a field's own update() function.
  *
  * NOTE: There is no direct link to the C++ code; any changes in the C++ API
  * will require manual changes in this Javascript library.
@@ -73,20 +70,12 @@ class Globals
         .prop('placeholder', 'global variables')
         .prop('rows', 10)
         .prop('cols', 70)
-        .change(function (event) { return global.update($(event.target)); })
+        .change(function (event) { global.cppCode = event.target.val(); return false; })
         .val(this.cppCode));
   }
 
   toCpp() {
     return this.cppCode;
-  }
-
-  update(element) {
-    if (element.hasClass('globals')) {
-      this.cppCode = element.val();
-      return true;
-    }
-    return false;
   }
 }
 
@@ -160,15 +149,6 @@ class Intelligence
     }
   }
 
-  update(elementStack) {
-    let decision = elementStack.pop().data('instance');
-    if (decision) {
-      decision.update(elementStack);
-      return true;
-    }
-    return false
-  }
-
   updateDecisionOrder() {
     let sortedDecisions = [];
     for (let decision of $('#decision_container').find('.decision')) {
@@ -204,20 +184,17 @@ class Name
         .addClass('name')
         .prop('type', 'text')
         .prop('placeholder', 'name')
-        .val(this.name));
+        .val(this.name)
+        .change({owner: this}, function (event) { 
+          let name = $(this).val();
+          event.data.owner.name = name;
+          $(this).parents('.decision_wrapper').find('.decision_label .content').text(name);
+          return false; 
+        }));
   }
 
   toCpp() {
     return 'name("' + this.name + '")';
-  }
-
-  update(element) {
-    if (element.hasClass('name')) {
-      this.name = element.val();
-      element.parent().prev('.decision_label').children('.content').text(this.name);
-      return true;
-    }
-    return false;
   }
 }
 
@@ -239,20 +216,17 @@ class Description
         .addClass('description')
         .prop('type', 'text')
         .prop('placeholder', 'description')
-        .val(this.description));
+        .val(this.description)
+        .change({owner: this}, function (event) {
+          let description = $(this).val();
+          event.data.owner.description = description;
+          $(this).parents('.consideration_wrapper').find('.consideration_label .content').text(description);
+          return false
+        }));
   }
 
   toCpp() {
     return 'description("' + this.description + '")';
-  }
-
-  update(element) {
-    if (element.hasClass('description')) {
-      this.description = element.val();
-      element.parent().prev('.consideration_label').children('.content').text(this.description);
-      return true;
-    }
-    return false;
   }
 }
 
@@ -284,7 +258,11 @@ class UtilityScore
   toHtml() {
     let out = $('<select>')
       .data('instance', this)
-      .addClass('utility');
+      .addClass('utility')
+      .change({owner: this}, function (event) {
+        event.data.owner.score = $(this).val();
+        return false;
+      });
     for (let utility in UtilityScore.valid) {
       out.append($('<option>')
         .prop('selected', utility === this.score)
@@ -298,18 +276,6 @@ class UtilityScore
   
   toCpp() {
     return 'UtilityScore::' + this.score;
-  }
-
-  update(element) {
-    if (element.hasClass('utility')) {
-      let newScore = element.val();
-      if (!(newScore in UtilityScore.valid)) {
-        throw new Error('"' + newScore + '" is not a valid UtilityScore');
-      }
-      this.score = newScore;
-      return true;
-    }
-    return false;
   }
 }
 
@@ -356,7 +322,23 @@ class Events
             .prop('type', 'checkbox')
             .prop('checked', this.events.indexOf(event) !== -1)
             .prop('name', event)
-            .val(event))));
+            .val(event)
+            .change({owner: this}, function (event) {
+              let eventLabel = $(this).val();
+              let owner = event.data.owner;
+              if ($(this).prop('checked')) {
+                if (owner.events.indexOf(eventLabel) === -1) {
+                  owner.events.push(eventLabel);
+                }
+              }
+              else {
+                let eventIndex = owner.events.indexOf(eventLabel);
+                if (eventIndex >= 0) {
+                  owner.events.splice(eventIndex, 1);
+                }
+              }
+              return false;
+            }))));
     }
     return out;
   }
@@ -366,33 +348,6 @@ class Events
     return 'events {'
       + cppEvents.join(', ')
       + '}';
-  }
-
-  update(elementStack) {
-    if (elementStack.pop().hasClass('events')) {
-      elementStack.pop(); // LI element
-      let checkbox = elementStack.pop();
-      if (!elementStack.length) {
-        let eventLabel = checkbox.val();
-        if (Events.valid.indexOf(eventLabel) === -1) {
-          throw new Error('"' + eventLabel + '" is not a valid Event');
-        }
-        if (checkbox.prop('checked')) {
-          if (this.events.indexOf(eventLabel) === -1) {
-            this.events.push(eventLabel);
-          }
-          return true;
-        }
-        else { // remove event from this.events
-          let eventIndex = this.events.indexOf(eventLabel);
-          if (eventIndex >= 0) {
-            this.events.splice(eventIndex, 1);
-          }
-          return true;
-        }
-      }
-    }
-    return false;
   }
 }
 
@@ -410,26 +365,22 @@ class Action
     return $('<label>')
       .append($('<div>').text('Action: '))
       .append($('<textarea>')
-          .data('instance', this)
-          .addClass('action')
-          .prop('placeholder', 'action')
-          .prop('rows', 10)
-          .prop('cols', 70)
-          .val(this.cppCode));
+        .data('instance', this)
+        .addClass('action')
+        .prop('placeholder', 'action')
+        .prop('rows', 10)
+        .prop('cols', 70)
+        .val(this.cppCode)
+        .change({owner: this}, function (event) {
+          event.data.owner.cppCode = $(this).val();
+          return false;
+        }));
   }
   
   toCpp() {
     return 'actions {\n'
       + this.cppCode
       + '\n}';
-  }
-
-  update(element) {
-    if (element.hasClass('action')) {
-      this.cppCode = element.val();
-      return true;
-    }
-    return false;
   }
 }
 
@@ -447,7 +398,6 @@ class Decision
     this.name = new Name(nameExpression.exec(decisionText)[1]);
     this.description = new Description(descriptionExpression.exec(decisionText)[1]);
     this.utility = new UtilityScore(utilityExpression.exec(decisionText)[1]);
-    window.sessionStorage.setItem('decision_' + this.id +',utilityScore', UtilityScore.valid[this.utility.score]);
     this.action = new Action(actionExpression.exec(decisionText)[1]);
     this.considerations = [];
     
@@ -550,7 +500,7 @@ class Decision
         heightStyle: 'content',
         icons: false
       });
-    out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
+    //out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -566,35 +516,6 @@ class Decision
       + '},\n'
       + this.action.toCpp()
       + ');\n';
-  }
-
-  update(elementStack) {
-    let top = elementStack.pop();
-    if (top.hasClass('considerations')) {
-      let consideration = elementStack.pop().data('instance');
-      return consideration ? consideration.update(elementStack) : false;
-    }
-    else if (top.hasClass('events')) {
-      elementStack.push(top);
-      return this.events.update(elementStack);
-    }
-    else if (!elementStack.length) {
-      if (top.hasClass('name')) {
-        return this.name.update(top);
-      }
-      else if (top.hasClass('description')) {
-        return this.description.update(top);
-      }
-      else if (top.hasClass('utility')) {
-        return this.utility.update(top)
-          && (window.sessionStorage.setItem('decision_' + this.id +',utilityScore', UtilityScore.valid[this.utility.score])
-            || true);
-      }
-      else if (top.hasClass('action')) {
-        return this.action.update(top);
-      }
-    }
-    return false;
   }
 
   updateConsiderationOrder() {
@@ -642,33 +563,32 @@ class Range
           .addClass('min')
           .prop('type', 'text')
           .prop('placeholder', 'min')
-          .val(this.minRange)))
+          .val(this.minRange)
+          .change({owner: this}, function (event) {
+            let newValue = parseFloat($(this).val());
+            if (!isNaN(newValue)) {
+              event.data.owner.minRange = newValue;
+              return false;
+            }
+          })))
       .append($('<label>')
         .text('max range')
         .append($('<input>')
           .addClass('max')
           .prop('type', 'text')
           .prop('placeholder', 'max')
-          .val(this.maxRange)));
+          .val(this.maxRange)
+          .change({owner: this}, function (event) {
+            let newValue = parseFloat($(this).val());
+            if (!isNaN(newValue)) {
+              event.data.owner.maxRange = newValue;
+              return false;
+            }
+          })));
   }
   
   toCpp() {
     return 'range(' + this.minRange + ', ' + this.maxRange + ')';
-  }
-
-  update(element) {
-    let newValue = parseFloat(element.val());
-    if (!isNaN(newValue)) {
-      if (element.hasClass('min')) {
-        this.minRange = newValue;
-        return true;
-      }
-      else if (element.hasClass('max')) {
-        this.maxRange = newValue;
-        return true;
-      }
-    }
-    return false;
   }
 }
 
@@ -686,26 +606,21 @@ class UtilityFunction
     return $('<label>')
       .append($('<div>').text('Utility function: '))
       .append($('<textarea>')
-          .data('instance', this)
-          .addClass('utility_function')
-          .prop('placeholder', 'utility function')
-          .prop('rows', 10)
-          .prop('cols', 70)
-          .val(this.cppCode));
+        .data('instance', this)
+        .addClass('utility_function')
+        .prop('placeholder', 'utility function')
+        .prop('rows', 10)
+        .prop('cols', 70)
+        .val(this.cppCode)
+        .change({owner: this}, function (event) {
+          event.data.owner.cppCode = $(this).val();
+        }));
   }
 
   toCpp() {
     return '{\n'
       + this.cppCode
       + '\n}';
-  }
-
-  update(element) {
-    if (element.hasClass('utility_function')) {
-      this.cppCode = element.val();
-      return true;
-    }
-    return false;
   }
 }
 
@@ -732,17 +647,14 @@ class Spline {
       .spline;
   }
 
-  constructor(decisionId, considerationId, range, interpolation, splinePoints, utilityScore) {
-    this.utilityScore = UtilityScore.valid[utilityScore.score];
-    this.minRange = range.minRange;
-    this.maxRange = range.maxRange;
-
+  constructor(consideration, interpolation, splinePoints) {
     window.sessionStorage.setItem(this.id + ',width', 500);
     window.sessionStorage.setItem(this.id + ',height', 300);
     
-    this.id = 'spline_' + decisionId + '_' + considerationId;
-    this.decisionId = decisionId;
-    this.considerationId = considerationId;
+    this.decisionId = consideration.parentDecision.id;
+    this.considerationId = consideration.id;
+    this.id = 'spline_' + this.decisionId + '_' + this.considerationId;
+    this.parentConsideration = consideration;
     this.setPoints(splinePoints);
     this.setInterpolation(interpolation);
     this.interpolation = interpolation;
@@ -777,6 +689,14 @@ class Spline {
         .prop('src', 'spline_designer.html?id=' + this.id));
   }
 
+  get maxRange() {
+    return this.parentConsideration.range.maxRange;
+  }
+
+  get minRange() {
+    return this.parentConsideration.range.minRange;
+  }
+  
   setPoints(pointString) {
     let minRange = this.minRange;
     let maxRange = this.maxRange;
@@ -803,19 +723,8 @@ class Spline {
   }
   
   pointsToCpp() {
-    let spline = this;
-    let parentDecision = intelligence.decisions.find(function (d) { return d.id === spline.decisionId; });
-    let parentConsideration = parentDecision.considerations.find(function (c) { return c.id === spline.considerationId; });
-    let minRange = parentConsideration.range.minRange;
-    if (this.minRange !== minRange) {
-      // TODO: something something update
-      this.minRange = minRange;
-    }
-    let maxRange = parentConsideration.range.maxRange;
-    if (this.maxRange !== maxRange) {
-      // TODO:: something something update
-      this.maxRange = maxRange;
-    }
+    let minRange = this.minRange;
+    let maxRange = this.maxRange;
 
     let width = window.sessionStorage.getItem(this.id + ',width');
     let height = window.sessionStorage.getItem(this.id + ',height');
@@ -835,22 +744,17 @@ class Spline {
   toCpp() {
     return 'Spline::' + this.interpolation + '('
       + this.pointsToCpp()
-      + ')\n';
+      + ')';
   }
   
   update(key, value) {
     if (key === 'points') {
-      this.points = value;
-      return true;
+      //this.points = value;
     }
     else if (key === 'interpolation') {
       this.interpolation = value;
     }
     return false;
-  }
-
-  updateRange(range) {
-    this.range = range;
   }
 }
 
@@ -873,7 +777,7 @@ class Consideration
     this.parentDecision = parentDecision;
     this.description = new Description(descriptionExpression.exec(considerationText)[1]);
     this.range = new Range(rangeExpression.exec(considerationText));
-    this.spline = new Spline(this.parentDecision.id, this.id, this.range, splineType, splinePoints, this.parentDecision.utility);
+    this.spline = new Spline(this, splineType, splinePoints);
     this.utilityFunction = new UtilityFunction(considerationText.substr(utilityFunctionStartPos, utilityFunctionLength));
   }
 
@@ -897,7 +801,7 @@ class Consideration
       heightStyle: 'content',
       icons: false
     });
-    out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
+    //out.find('input, select, textarea').change(function (event) { updateOnChange(this, event); });
     return out;
   }
 
@@ -908,26 +812,6 @@ class Consideration
       + this.spline.toCpp() + ',\n'
       + this.utilityFunction.toCpp() + '\n'
       + ')';
-  }
-
-  update(elementStack) {
-    elementStack.pop(); // remove wrapper
-    let top = elementStack.pop();
-    if (top.hasClass('range')) {
-      if (elementStack.length !== 1) {
-        return false;
-      }
-      return this.range.update(elementStack[0]) && this.spline.updateRange(this.range);
-    }
-    else if (!elementStack.length) {
-      if (top.hasClass('description')) {
-        return this.description.update(top);
-      }
-      else if (top.hasClass('utility_function')) {
-        return this.utilityFunction.update(top);
-      }
-    }
-    return false;
   }
 
   remove() {
@@ -1114,34 +998,6 @@ function downloadHeaderFile(content, fileName) {
   window.URL.revokeObjectURL(textFile);
 }
 
-/**
- * Given a changed HTML element, update the corresponding Javascript object.
- *
- * This function expects to be bound by jQuery on a "change" event of any
- * select, input or textarea elements in the environment.
- *
- * It expects a jQuery representation of the changed HTML element, and the
- * event.  It builds a stack of parent elements of this HTML element, until
- * the div.decision element is reached.  The function then makes a call to
- * the global variable intelligence's update method.
- */
-function updateOnChange(element, event) {
-  let stack = [$(element)];
-  while (true) {
-    let ancestor = stack[stack.length - 1].parent();
-    stack.push(ancestor);
-    if (ancestor.hasClass('decision')) {
-      break;
-    }
-    else if (ancestor.is('html')) {
-      throw new Error('Malformed HTML document: no element with class="decision" found.');
-    }
-  }
-  if (!intelligence.update(stack)) {
-    console.error('The intelligence is not updated correctly!');
-  }
-}
-
 $(document).ready(function() {
   let mouseLastHoverSection = 'decisions_section';
   let splineHovered = null;
@@ -1161,7 +1017,6 @@ $(document).ready(function() {
 
   $(window).keydown(function(event) {
     let eventKey = String.fromCodePoint(event.which);
-    window.sessionStorage.setItem('key', eventKey);
     if (event.ctrlKey && (eventKey === 's' || eventKey === 'S')) {
       if (mouseLastHoverSection === 'globals_section' && globals !== null) {
         $('#getGlobals').click();
