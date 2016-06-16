@@ -58,43 +58,28 @@
     }
 
     $(document).ready(function () {
-      var width = 500,//$(window).width(),
-          height = 300;// - d3.select('label').attr('height');//$(window).height() - $('form').height();
-
       var window_id = getUrlParameter('id') || '';
 
-      var decisionId = window.sessionStorage.getItem(window_id + ',decision');
-      var utility_score = parseFloat(window.sessionStorage.getItem('decision_' + decisionId + ',utilityScore'));
+      var width = window.sessionStorage.getItem(window_id + ',width') || 500,//$(window).width(),
+          height = window.sessionStorage.getItem(window_id + ',height') || 300;//$(window).height();
 
-      var minRange = window.sessionStorage.getItem(window_id + ',minRange');
-      if (minRange) {
-        minRange = parseFloat(minRange);
-      }
-      else {
-        minRange = 0;
-      }
-
-      var maxRange = window.sessionStorage.getItem(window_id + ',maxRange');
-      if (maxRange) {
-        maxRange = parseFloat(maxRange);
-      }
-      else {
-        maxRange = 1;
-      }
-
-      var interpolation = window.sessionStorage.getItem(window_id + ',interpolation');
-      if (!interpolation) {
-        interpolation = 'linear';
-      }
+      var interpolation = window.sessionStorage.getItem(window_id + ',interpolation') || 'linear';
 
       var points = window.sessionStorage.getItem(window_id + ',points');
+      let isPointsSet = false;
       if (points) {
-        points = stringToPoints(points);
+        points = JSON.parse(points);
+        if (points.length) {
+          isPointsSet = true;
+        }
       }
-      else {
+      if (!isPointsSet) {
+        points = [[0, height], [width, 0]];
+        /*
         points = d3.range(0, 6).map(function(i) {
           return [i * width / 5, 50 + Math.random() * (height - 100)];
         });
+        */
       }
 
       var dragged = null,
@@ -122,51 +107,13 @@
           .on("mouseup", mouseup)
           .on("keydown", keydown);
 
-      function pointCppToJs(point) {
-        let p = [];
-        p.push((point[0] - minRange) / (maxRange - minRange) * width);
-        p.push((utility_score - point[1]) / utility_score * height);
-        return p;
-      }
-
-      function pointJsToCpp(point) {
-        let p = [];
-        p.push(point[0] / width * (maxRange - minRange) + minRange);
-        p.push((height - point[1]) / height * utility_score);
-        return p;
-      }
-
-      function numberJsToCppString(number) {
-        return number.toString() + (Number.isInteger(number) ? '.f' : 'f');
-      }
-
-      function pointJsToCppString(point) {
-        return '{' + pointJsToCpp(point).map(numberJsToCppString).join(', ') + '}';
-      }
-
-      function stringToPoints(pointString) {
-        let pointsStripped = pointString.replace(/\{\s*\{/, '{');
-        pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
-
-        let points = [];
-        let pattern = /\{(\s*\d+.?\d*)f?\s*,\s*(\s*\d+.?\d*)f?\}/g;
-        let match = pattern.exec(pointsStripped);
-        while (match !== null) {
-          points.push(pointCppToJs([parseFloat(match[1]), parseFloat(match[2])]));
-          match = pattern.exec(pointsStripped);
-        }
-        return points;
-      }
-
-      function pointsToString(points) {
-        return '{' + points.map(pointJsToCppString).join(', ') + '}';
-      }
-
       function redraw() {
         points.sort(function (a, b) { return a[0] - b[0]; });
         line.interpolate(interpolation);
-        window.sessionStorage.setItem(window_id + ',points', pointsToString(points));
+        window.sessionStorage.setItem(window_id + ',points', JSON.stringify(points));
         window.sessionStorage.setItem(window_id + ',interpolation', interpolation);
+        window.sessionStorage.setItem(window_id + ',width', width);
+        window.sessionStorage.setItem(window_id + ',height', height);
 
         svg.select("path").attr("d", line);
 
@@ -237,10 +184,7 @@
         e = e.originalEvent;
         if (e.key.startsWith(window_id)) {
           let specifier = e.key.split(',');
-          if (specifier[1] === 'minRange') minRange = parseFloat(e.newValue);
-          else if (specifier[1] === 'maxRange') maxRange = parseFloat(e.newValue);
-          else if (specifier[1] === 'utilityScore') utility_score = parseFloat(e.newValue);
-          else if (specifier[1] === 'interpolation') { interpolation = e.newValue; redraw(); }
+          if (specifier[1] === 'interpolation') { interpolation = e.newValue; redraw(); }
           else if (specifier[1] === 'remove' && e.newValue === 'true') {
             window.sessionStorage.removeItem(window_id + ',remove');
             remove_point();

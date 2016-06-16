@@ -50,7 +50,7 @@ const emptyDecisionCpp = 'addDecision(\n'
 const emptyConsiderationCpp = 'consideration('
   + 'description("New Consideration"),\n'
   + 'range(0, 1),\n'
-  + 'Spline::Linear({{0, 0}, {1, 1}}),\n'
+  + 'Spline::Linear({}),\n'
   + '{}\n'
   + '),';
 
@@ -720,8 +720,9 @@ class Spline {
   }
   
   static findById(splineId) {
-    let decisionId = window.sessionStorage.getItem(splineId + ',decision');
-    let considerationId = window.sessionStorage.getItem(splineId + ',consideration');
+    let ids = splineId.split('_');
+    let decisionId = ids[1];
+    let considerationId = ids[2];
     return intelligence.decisions.find(function (d) {
       return d.id == decisionId;
     })
@@ -731,18 +732,20 @@ class Spline {
       .spline;
   }
 
-  constructor(decisionId, considerationId, range, interpolation, splinePoints) {
+  constructor(decisionId, considerationId, range, interpolation, splinePoints, utilityScore) {
+    this.utilityScore = UtilityScore.valid[utilityScore.score];
+    this.minRange = range.minRange;
+    this.maxRange = range.maxRange;
+
+    window.sessionStorage.setItem(this.id + ',width', 500);
+    window.sessionStorage.setItem(this.id + ',height', 300);
+    
     this.id = 'spline_' + decisionId + '_' + considerationId;
-    this.range = range;
-    this.points = splinePoints;
+    this.decisionId = decisionId;
+    this.considerationId = considerationId;
+    this.setPoints(splinePoints);
     this.setInterpolation(interpolation);
     this.interpolation = interpolation;
-
-    window.sessionStorage.setItem(this.id + ',decision', decisionId);
-    window.sessionStorage.setItem(this.id + ',consideration', considerationId);
-    window.sessionStorage.setItem(this.id + ',points', this.points);
-    window.sessionStorage.setItem(this.id + ',minRange', this.range.minRange);
-    window.sessionStorage.setItem(this.id + ',maxRange', this.range.maxRange);
   }
 
   setInterpolation(interpolation) {
@@ -774,9 +777,64 @@ class Spline {
         .prop('src', 'spline_designer.html?id=' + this.id));
   }
 
+  setPoints(pointString) {
+    let minRange = this.minRange;
+    let maxRange = this.maxRange;
+    let width = window.sessionStorage.getItem(this.id + ',width');
+    let height = window.sessionStorage.getItem(this.id + ',height');
+    
+    let pointsStripped = pointString.replace(/\{\s*\{/, '{');
+    pointsStripped = pointsStripped.replace(/\}\s*\}/, '}');
+
+    this.points = [];
+    let pattern = /\{(\s*\d+.?\d*)f?\s*,\s*(\s*\d+.?\d*)f?\}/g;
+    let match = pattern.exec(pointsStripped);
+    while (match !== null) {
+      // Transform coordinate system from (minRange,maxRange) x (0,1)
+      // to (0,width) x (0,height)
+      let x = parseFloat(match[1]);
+      let y = parseFloat(match[2]);
+      x = (x - minRange) / (maxRange - minRange) * width;
+      y = height - (y * height);
+      this.points.push([x, y]);
+      match = pattern.exec(pointsStripped);
+    }
+    window.sessionStorage.setItem(this.id + ',points', JSON.stringify(this.points));
+  }
+  
+  pointsToCpp() {
+    let spline = this;
+    let parentDecision = intelligence.decisions.find(function (d) { return d.id === spline.decisionId; });
+    let parentConsideration = parentDecision.considerations.find(function (c) { return c.id === spline.considerationId; });
+    let minRange = parentConsideration.range.minRange;
+    if (this.minRange !== minRange) {
+      // TODO: something something update
+      this.minRange = minRange;
+    }
+    let maxRange = parentConsideration.range.maxRange;
+    if (this.maxRange !== maxRange) {
+      // TODO:: something something update
+      this.maxRange = maxRange;
+    }
+
+    let width = window.sessionStorage.getItem(this.id + ',width');
+    let height = window.sessionStorage.getItem(this.id + ',height');
+    
+    let point_strings = [];
+    let editor_points = JSON.parse(window.sessionStorage.getItem(this.id + ',points'));
+    for (let point of editor_points) {
+      // Transform coordinate system from SVG's (0,width) x (0,height)
+      // to (minRange,maxRange) x (0,1)
+      let x = point[0] / width * (maxRange - minRange) + minRange;
+      let y = (height - point[1]) / height;
+      point_strings.push('{' + numberToCppString(x) + ', ' + numberToCppString(y) + '}');
+    }
+    return '{' + point_strings.join(', ') + '}';
+  }
+
   toCpp() {
     return 'Spline::' + this.interpolation + '('
-      + this.points
+      + this.pointsToCpp()
       + ')\n';
   }
   
@@ -815,7 +873,7 @@ class Consideration
     this.parentDecision = parentDecision;
     this.description = new Description(descriptionExpression.exec(considerationText)[1]);
     this.range = new Range(rangeExpression.exec(considerationText));
-    this.spline = new Spline(this.parentDecision.id, this.id, this.range, splineType, splinePoints);
+    this.spline = new Spline(this.parentDecision.id, this.id, this.range, splineType, splinePoints, this.parentDecision.utility);
     this.utilityFunction = new UtilityFunction(considerationText.substr(utilityFunctionStartPos, utilityFunctionLength));
   }
 
@@ -879,6 +937,10 @@ class Consideration
   duplicate() {
     this.parentDecision.duplicateConsideration(this.id);
   }
+}
+
+function numberToCppString(number) {
+  return number.toString() + (Number.isInteger(number) ? '.f' : 'f');
 }
 
 function createLabel(content, labelClass) {
