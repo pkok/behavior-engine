@@ -549,8 +549,8 @@ class Range
     if (regexRangeMatch.length !== 3) {
       throw new Error('Range needs 2 arguments');
     }
-    this.minRange = parseFloat(regexRangeMatch[1]);
-    this.maxRange = parseFloat(regexRangeMatch[2]);
+    this.minRange = regexRangeMatch[1];
+    this.maxRange = regexRangeMatch[2];
   }
 
   toHtml() {
@@ -565,7 +565,7 @@ class Range
           .prop('placeholder', 'min')
           .val(this.minRange)
           .change({owner: this}, function (event) {
-            let newValue = parseFloat($(this).val());
+            let newValue = $(this).val();
             if (!isNaN(newValue)) {
               event.data.owner.minRange = newValue;
               return false;
@@ -579,7 +579,7 @@ class Range
           .prop('placeholder', 'max')
           .val(this.maxRange)
           .change({owner: this}, function (event) {
-            let newValue = parseFloat($(this).val());
+            let newValue = $(this).val();
             if (!isNaN(newValue)) {
               event.data.owner.maxRange = newValue;
               return false;
@@ -655,7 +655,6 @@ class Spline {
     window.sessionStorage.setItem(this.id + ',width', 500);
     window.sessionStorage.setItem(this.id + ',height', 300);
     
-    this.parentConsideration = consideration;
     this.setPoints(splinePoints);
     this.setInterpolation(interpolation);
     this.interpolation = interpolation;
@@ -690,17 +689,7 @@ class Spline {
         .prop('src', 'spline_designer.html?id=' + this.id));
   }
 
-  get maxRange() {
-    return this.parentConsideration.range.maxRange;
-  }
-
-  get minRange() {
-    return this.parentConsideration.range.minRange;
-  }
-  
   setPoints(pointString) {
-    let minRange = this.minRange;
-    let maxRange = this.maxRange;
     let width = window.sessionStorage.getItem(this.id + ',width');
     let height = window.sessionStorage.getItem(this.id + ',height');
     
@@ -711,11 +700,11 @@ class Spline {
     let pattern = /\{(\s*[-+]*\d*.?\d*)f?\s*,\s*(\s*[-+]*\d*.?\d*)f?\}/g;
     let match = pattern.exec(pointsStripped);
     while (match !== null) {
-      // Transform coordinate system from (minRange,maxRange) x (0,1)
+      // Transform coordinate system from (0,1) x (0,1)
       // to (0,width) x (0,height)
       let x = parseFloat(match[1]);
       let y = parseFloat(match[2]);
-      x = (x - minRange) / (maxRange - minRange) * width;
+      x = x * width;
       y = height - (y * height);
       this.points.push([x, y]);
       match = pattern.exec(pointsStripped);
@@ -724,9 +713,6 @@ class Spline {
   }
   
   pointsToCpp() {
-    let minRange = this.minRange;
-    let maxRange = this.maxRange;
-
     let width = window.sessionStorage.getItem(this.id + ',width');
     let height = window.sessionStorage.getItem(this.id + ',height');
     
@@ -734,8 +720,8 @@ class Spline {
     let editor_points = JSON.parse(window.sessionStorage.getItem(this.id + ',points'));
     for (let point of editor_points) {
       // Transform coordinate system from SVG's (0,width) x (0,height)
-      // to (minRange,maxRange) x (0,1)
-      let x = point[0] / width * (maxRange - minRange) + minRange;
+      // to (0,1) x (0,1)
+      let x = point[0] / width;
       let y = (height - point[1]) / height;
       point_strings.push('{' + numberToCppString(x) + ', ' + numberToCppString(y) + '}');
     }
