@@ -165,10 +165,11 @@ class DecisionEngine {
      * This might leave the engine empty.
      */
     void clearEvent(Event e) {
-      std::remove_if(active_rules.begin(), active_rules.end(),
-          [e](const Rule& entry) {
+      active_rules.erase(std::remove_if(active_rules.begin(), active_rules.end(),
+            [e](const Rule& entry) {
             return std::get<0>(entry) == e;
-          });
+            }),
+          active_rules.cend());
       const auto& it = std::get<0>(active_events.insert(e));
       active_events.erase(it);
 #if defined(BHUMAN) && BHUMAN
