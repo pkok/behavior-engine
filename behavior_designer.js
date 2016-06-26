@@ -36,7 +36,7 @@ const descriptionExpression     = /description\(\s*['"](.*)['"]\s*\)\s*,/;
 
 // Example of an empty Decision in C++
 const emptyDecisionCpp = 'addDecision(\n'
-  + 'name("New Decision"),\n'
+  + 'name(""),\n'
   + 'description(""),\n'
   + 'UtilityScore::Useful,\n'
   + 'events {},\n'
@@ -45,7 +45,7 @@ const emptyDecisionCpp = 'addDecision(\n'
   + ');';
 // Example of an empty Consideration in C++
 const emptyConsiderationCpp = 'consideration('
-  + 'description("New Consideration"),\n'
+  + 'description(""),\n'
   + 'range(0, 1),\n'
   + 'Spline::Linear({}),\n'
   + '{}\n'
@@ -188,7 +188,7 @@ class Name
         .change({owner: this}, function (event) { 
           let name = $(this).val();
           event.data.owner.name = name;
-          $(this).parents('.decision_wrapper').find('.decision_label .content').text(name);
+          $(this).parents('.decision_wrapper').find('.decision_label .content').empty().append(name || '<em>Unnamed</em>');
           return false; 
         }));
   }
@@ -220,7 +220,7 @@ class Description
         .change({owner: this}, function (event) {
           let description = $(this).val();
           event.data.owner.description = description;
-          $(this).parents('.consideration_wrapper').find('.consideration_label .content').text(description);
+          $(this).parents('.consideration_wrapper').find('.consideration_label .content').empty().append(description || '<em>Unnamed</em>');
           return false
         }));
   }
@@ -820,7 +820,7 @@ function createLabel(content, labelClass) {
     .addClass(labelClass === undefined ? 'label' : labelClass)
     .append($('<span>')
       .addClass('content')
-      .text(content))
+      .append(content || '<em>Unnamed</em>'))
     // A ** symbol to duplicate this item
     .append($('<span>')
       .addClass('controls')
