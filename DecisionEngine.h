@@ -21,7 +21,7 @@
 #include "Representations/BehaviorControl/ActivationGraph.h"
 #include "Tools/Enum.h"
 
-#define DEFAULT_SCORE -1.0
+constexpr float DEFAULT_SCORE = -1.0;
 #endif
 
 /** Using these macros, writing addDecision becomes more readable and less
@@ -169,7 +169,7 @@ class DecisionEngine {
             [e](const Rule& entry) {
             return std::get<0>(entry) == e;
             }),
-          active_rules.cend());
+          active_rules.end());
       const auto& it = std::get<0>(active_events.insert(e));
       active_events.erase(it);
 #if defined(BHUMAN) && BHUMAN
@@ -198,7 +198,7 @@ class DecisionEngine {
       if (active_rules.empty()) {
         throw DecisionException("Empty active rule set");
       }
-      float highest_score = std::numeric_limits<float>::lowest();
+      float highest_score = 0.f;
       size_t best_index = 0;
 
       size_t i = 0;
@@ -239,7 +239,11 @@ class DecisionEngine {
           }
         }
       }
+      if (!highest_score) {
+        throw DecisionException("No rule was activated");
+      }
 #if defined(BHUMAN) && BHUMAN
+      activation_graph.get().bestDecisionIndex = best_index;
       finalizeUpdateActivationGraphFromDecision(i + 1);
 #endif
       return std::get<1>(active_rules[best_index]).get();
