@@ -29,9 +29,9 @@ float Test::getRandom() {
 void Test::showActives() {
   for (const auto& decision : getActiveDecisions()) {
     std::cout << "- '"
-      << decision.getName()
+      << decision->getName()
       << "' ("
-      << static_cast<std::underlying_type<UtilityScore>::type>(decision.getUtility())
+      << static_cast<std::underlying_type<UtilityScore>::type>(decision->getUtility())
       << ")\n";
   }
 }
@@ -64,7 +64,7 @@ Test::Test() : DecisionEngine() {
     considerations {
       consideration(
         description("Randomness"), 
-        range(0, 1), 
+        range(0, 1),
         Spline::Linear({{0,0}, {1,1}}), {
           return getRandom();
         }),
@@ -125,8 +125,8 @@ int main(int, char**) {
   for (unsigned int i = 0; i < 5; ++i) {
     std::cout << "Round " << i << std::endl;
     t.showActives();
-    Decision& d = t.getBestDecision();
-    d.execute();
-    std::cout << "Choice: '" << d.getName() << "'\n\n";
+    std::shared_ptr<Decision> d = t.getBestDecision();
+    d->execute();
+    std::cout << "Choice: '" << d->getName() << "'\n\n";
   }
 }

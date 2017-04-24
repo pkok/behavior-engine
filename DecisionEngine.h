@@ -4,6 +4,7 @@
 #include <exception>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -133,7 +134,7 @@ class DecisionEngine {
       }
       if (active_events.find(e) == active_events.end()) {
         for (auto& decision : rules[e]) {
-          active_rules.emplace_back(e, std::reference_wrapper<Decision>(decision));
+          active_rules.emplace_back(e, std::make_shared<Decision>(decision));
         }
         active_events.insert(e);
         sort_active_decisions();
@@ -185,7 +186,7 @@ class DecisionEngine {
 
     /** Select the Decision with the highest score, and run its Action. */
     void executeBestDecision() {
-      getBestDecision().execute();
+      getBestDecision()->execute();
     }
 
     /** Select the Decision with the highest score.
@@ -193,7 +194,7 @@ class DecisionEngine {
      * It should run as lazy as possible.  There is probably some
      * optimization to squeeze out of here.
      */
-    Decision& getBestDecision() {
+    std::shared_ptr<Decision> getBestDecision() {
       if (!updated_events.empty()) {
         sort_decisions();
       }
@@ -205,10 +206,10 @@ class DecisionEngine {
 
       size_t i = 0;
       for (; i < active_rules.size(); ++i) {
-        const Decision& decision = std::get<1>(active_rules[i]);
-        float utility = static_cast<float>(decision.getUtility());
+        std::shared_ptr<const Decision> decision = std::get<1>(active_rules[i]);
+        float utility = static_cast<float>(decision->getUtility());
 #ifdef NDEBUG
-        std::cout << "  Computing Decision '" << decision.getName() << "', utility: " << utility << "\n";
+        std::cout << "  Computing Decision '" << decision->getName() << "', utility: " << utility << "\n";
 #endif
         // Because active_rules is sorted and because for any score s holds
         // 0 <= s <= 1, we are guaranteed not to find
@@ -220,7 +221,7 @@ class DecisionEngine {
 #endif
           break;
         }
-        float score = decision.computeScore();
+        float score = decision->computeScore();
 #if defined(BHUMAN) && BHUMAN
         updateActivationGraph(i, score);
 #endif
@@ -248,15 +249,15 @@ class DecisionEngine {
       activation_graph.get().bestDecisionIndex = best_index;
       finalizeUpdateActivationGraphFromDecision(i + 1);
 #endif
-      return std::get<1>(active_rules[best_index]).get();
+      return std::get<1>(active_rules[best_index]);
     }
 
     /** Return a list of all Decisions which the Engine could use. */
-    std::vector<Decision> getActiveDecisions() {
-      std::vector<Decision> actives;
+    std::vector<std::shared_ptr<Decision>> getActiveDecisions() {
+      std::vector<std::shared_ptr<Decision>> actives;
       actives.reserve(active_rules.size());
       for (auto& rule : active_rules) {
-        actives.push_back(std::get<1>(rule));
+        actives.emplace_back(std::get<1>(rule));
       }
       return actives;
     }
@@ -283,7 +284,7 @@ class DecisionEngine {
 #endif
 
   protected:
-    using Rule = std::tuple<Event, std::reference_wrapper<Decision>>;
+    using Rule = std::tuple<Event, std::shared_ptr<Decision>>;
 
     std::unordered_map<Event, std::vector<Decision>> rules;
     std::vector<Rule> active_rules;
@@ -320,7 +321,7 @@ class DecisionEngine {
     void sort_active_decisions() {
       std::stable_sort(active_rules.begin(), active_rules.end(),
           [](const Rule& x, const Rule& y) {
-              return std::get<1>(x).get().getUtility() > std::get<1>(y).get().getUtility();
+              return std::get<1>(x)->getUtility() > std::get<1>(y)->getUtility();
           });
     }
 
