@@ -4,10 +4,10 @@
 #include <exception>
 #include <functional>
 #include <limits>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "Consideration.h"
@@ -180,7 +180,7 @@ class DecisionEngine {
 #endif
     }
 
-    const std::unordered_set<Event> getActiveEvents(){
+    const std::set<Event> getActiveEvents(){
         return active_events;
     }
 
@@ -286,10 +286,10 @@ class DecisionEngine {
   protected:
     using Rule = std::tuple<Event, std::shared_ptr<Decision>>;
 
-    std::unordered_map<Event, std::vector<Decision>> rules;
+    std::map<Event, std::vector<Decision>> rules;
     std::vector<Rule> active_rules;
-    std::unordered_set<Event> active_events;
-    std::unordered_set<Event> updated_events;
+    std::set<Event> active_events;
+    std::set<Event> updated_events;
 #if defined(BHUMAN) && BHUMAN
     std::reference_wrapper<ActivationGraph> activation_graph;
     ActivationGraph dummy_activation_graph;
