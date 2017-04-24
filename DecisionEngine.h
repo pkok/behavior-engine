@@ -43,6 +43,7 @@ constexpr float DEFAULT_SCORE = -1.0;
 // TODO: Fill this with your application-specific list of events.
 enum class Event : unsigned int;
 
+#if !defined(__clang__)
 /** Overloading std::hash for all enums. */
 namespace std {
   template<class E>
@@ -56,6 +57,7 @@ namespace std {
       using sfinae = typename std::enable_if<std::is_enum<E>::value, E>::type;
   };
 }
+#endif
 
 using considerations = std::vector<Consideration>;
 using events = std::vector<Event>;

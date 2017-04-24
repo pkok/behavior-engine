@@ -79,7 +79,7 @@ class Decision {
     const std::string& getDescription() const { return description; }
     UtilityScore getUtility() const { return utility; }
     const Action& getAction() const { return action; }
-    const Clock::time_point getExecutionTimestamp() const { return execution_timestamp; };
+    const Clock::time_point getExecutionTimestamp() const { return execution_timestamp; }
     const Clock::duration getTimeSinceExecution() const {
       return getTimeSinceExecution(std::chrono::steady_clock::now());
     }
