@@ -2,7 +2,6 @@
 #include <random>
 #include <chrono>
 
-#define NDEBUG
 #include "DecisionEngine.h"
 
 enum class Event : unsigned int {
@@ -55,6 +54,11 @@ Test::Test() : DecisionEngine() {
   //   should be static.
   static int counter = 0;
 
+// The actions demonstrated below do not use the Decision& that is passed to 
+// it. This results in an (understandable) unused parameter warning. Because
+// the warning is expected, it is suppressed.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
   addDecision(
     name("First decision"),
     description("Some long text"),
@@ -116,6 +120,7 @@ Test::Test() : DecisionEngine() {
       report("This is never executed.");
     }
   );
+#pragma clang diagnostic pop
 
   raiseEvent(Event::Always);
 }

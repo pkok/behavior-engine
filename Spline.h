@@ -15,16 +15,16 @@ namespace Spline {
   // pass by value so compiler can optimize this properly
   inline SplineFunction Linear(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points.front().x) { return points.front().y; }
-      if(x >= points.back().x) { return points.back().y; }
+      if (x <= points.front().x) { return points.front().y; }
+      if (x >= points.back().x) { return points.back().y; }
 
-      int count = points.size() - 1;
-      for(int i = 0; i < count; ++i)
+      size_t count = points.size() - 1;
+      for (size_t i = 0; i < count; ++i)
       {
         P2 a = points[i];
         P2 b = points[i + 1];
 
-        if(x >= a.x && x <= b.x)
+        if (x >= a.x && x <= b.x)
         {
           float interpolation = (x - a.x) / (b.x - a.x);
           return (1 - interpolation) * a.y + interpolation * b.y;
@@ -37,16 +37,16 @@ namespace Spline {
 
   inline SplineFunction StepBefore(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points.front().x) { return points.front().y; }
-      if(x >= points.back().x) { return points.back().y; }
+      if (x <= points.front().x) { return points.front().y; }
+      if (x >= points.back().x) { return points.back().y; }
 
-      int count = points.size() - 1;
-      for(int i = 0; i < count; ++i)
+      size_t count = points.size() - 1;
+      for (size_t i = 0; i < count; ++i)
       {
         P2 a = points[i];
         P2 b = points[i + 1];
 
-        if(x >= a.x && x <= b.x) { return b.y; }
+        if (x >= a.x && x <= b.x) { return b.y; }
       }
 
       return points.back().y;
@@ -55,16 +55,16 @@ namespace Spline {
 
   inline SplineFunction StepAfter(std::vector<P2> points) {
     return [points](float x) {
-      if(x <= points.front().x) { return points.front().y; }
-      if(x >= points.back().x) { return points.back().y; }
+      if (x <= points.front().x) { return points.front().y; }
+      if (x >= points.back().x) { return points.back().y; }
 
-      int count = points.size() - 1;
-      for(int i = 0; i < count; ++i)
+      size_t count = points.size() - 1;
+      for (size_t i = 0; i < count; ++i)
       {
         P2 a = points[i];
         P2 b = points[i + 1];
 
-        if(x >= a.x && x <= b.x) { return a.y; }
+        if (x >= a.x && x <= b.x) { return a.y; }
       }
 
       return points[count].y;
@@ -73,12 +73,12 @@ namespace Spline {
 
   inline SplineFunction Monotone(std::vector<P2> points)
   {
-    int count = points.size() - 1;
+    size_t count = points.size() - 1;
     std::vector<float> deltaXs(count);
     std::vector<float> slopes(count);
     std::vector<float> coefficients1(points.size()), coefficients2(count), coefficients3(count);
 
-    for(int i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
       P2 a = points[i];
       P2 b = points[i + 1];
@@ -89,12 +89,12 @@ namespace Spline {
     }
 
     coefficients1[0] = slopes[0];
-    for(int i = 0; i < count - 1; ++i)
+    for (size_t i = 0; i < count - 1; ++i)
     {
       float slope = slopes[i];
       float slopeNext = slopes[i + 1];
 
-      if(slope * slopeNext <= 0)
+      if (slope * slopeNext <= 0)
       { 
         coefficients1[i + 1] = 0; 
       }
@@ -108,7 +108,7 @@ namespace Spline {
     }
     coefficients1.back() = slopes.back();
 
-    for(int i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
       float c1 = coefficients1[i];
       float slope = slopes[i];
@@ -120,24 +120,24 @@ namespace Spline {
 
     return [=](float x)
     {
-      if(x <= points.front().x) { return points.front().y; }
-      if(x >= points.back().x) { return points.back().y; }
+      if (x <= points.front().x) { return points.front().y; }
+      if (x >= points.back().x) { return points.back().y; }
 
-      int low = 0;
-      int mid;
-      int high = count - 1;
+      size_t low = 0;
+      size_t mid;
+      size_t high = count - 1;
 
-      while(low <= high)
+      while (low <= high)
       {
         mid = (low + high) / 2;
         float xHere = points[mid].x;
 
-        if(xHere < x) { low = mid + 1; }
-        else if(xHere > x) { high = mid - 1; }
+        if (xHere < x) { low = mid + 1; }
+        else if (xHere > x) { high = mid - 1; }
         else { return points[mid].y; }
       }
 
-      int i = (high > 0) ? high : 0;
+      size_t i = (high > 0) ? high : 0;
 
       float diff = x - points[i].x;
       float diffSq = diff * diff;

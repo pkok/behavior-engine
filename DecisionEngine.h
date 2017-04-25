@@ -38,7 +38,7 @@ constexpr float DEFAULT_SCORE = -1.0;
  *    should be static.
  */
 #define consideration(DESCRIPTION, RANGE, TRANSFORM, FN) \
-  createConsideration(DESCRIPTION, [&]() mutable FN, TRANSFORM, RANGE)
+  Consideration(DESCRIPTION, [&]() mutable FN, TRANSFORM, RANGE)
 #define actions [&](Decision& theDecision) mutable
 
 // TODO: Fill this with your application-specific list of events.
@@ -72,18 +72,6 @@ class name : public std::string {
 class description : public std::string {
   using std::string::string;
 };
-
-/** Only used for labeling in DecisionEngine::addDecision */
-class range : public std::tuple<float, float> {
-  using std::tuple<float, float>::tuple;
-};
-
-Consideration createConsideration(const description& d,
-    UtilityFunction f,
-    Spline::SplineFunction s,
-    const range& r) {
-  return Consideration(d, f, s, std::get<0>(r), std::get<1>(r));
-}
 
 class DecisionException : public std::runtime_error {
   public:
@@ -213,10 +201,10 @@ class DecisionEngine {
 #endif
         // Because active_rules is sorted and because for any score s holds
         // 0 <= s <= 1, we are guaranteed not to find
-        if (utility < highest_score || utility == 0) {
+        if (utility < highest_score || !bool(utility)) {
 #ifdef NDEBUG
           std::cout << "    Ignoring this one: ";
-          if (utility == 0) std::cout << "utility = 0\n";
+          if (!bool(utility)) std::cout << "utility = 0\n";
           else std::cout << "utility < highest\n";
 #endif
           break;
@@ -234,7 +222,7 @@ class DecisionEngine {
 #endif
           highest_score = score;
           best_index = i;
-          if (score == utility) {
+          if (score >= utility) {
 #ifdef NDEBUG
             std::cout << "    Can't do better than this. Quitting.\n";
 #endif
@@ -242,7 +230,7 @@ class DecisionEngine {
           }
         }
       }
-      if (!highest_score) {
+      if (!bool(highest_score)) {
         throw DecisionException("No rule was activated");
       }
 #if defined(BHUMAN) && BHUMAN
@@ -330,7 +318,7 @@ class DecisionEngine {
         activation_graph.get().dlist.clear();
         activation_graph.get().dlist.reserve(active_rules.size());
         for (size_t i = 0; i < active_rules.size(); i++) {
-            activation_graph.get().dlist.emplace_back(std::get<1>(active_rules[i]).get().getName(), DEFAULT_SCORE);
+            activation_graph.get().dlist.emplace_back(std::get<1>(active_rules[i])->getName(), DEFAULT_SCORE);
         }
     }
 

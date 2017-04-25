@@ -37,11 +37,11 @@ class Decision {
         UtilityScore utility,
         std::vector<Consideration> considerations,
         const Action& action)
-      : name(name),
-      description(description),
-      utility(utility),
-      considerations(considerations),
-      action(action)
+      : name_(name),
+      description_(description),
+      utility_(utility),
+      considerations_(considerations),
+      action_(action)
     {}
 
     Decision() = default;
@@ -64,43 +64,43 @@ class Decision {
      * The weighing factor adjusts for this.
      */
     float computeScore() const {
-      const float modification_factor = 1.f - (1.f / (float) considerations.size());
-      float total_score = static_cast<float>(utility);
+      const float modification_factor = 1.f - (1.f / float(considerations_.size()));
+      float total_score = static_cast<float>(utility_);
       float score = 0.f;
-      for (auto& consideration : considerations) {
+      for (auto& consideration : considerations_) {
         score = consideration.computeScore();
         total_score *= score + ((1.f - score) * modification_factor * score);
-        if (total_score < 1e-6) break;
+        if (total_score < 1e-6f) break;
       }
       return total_score;
     }
 
-    const std::string& getName() const { return name; }
-    const std::string& getDescription() const { return description; }
-    UtilityScore getUtility() const { return utility; }
-    const Action& getAction() const { return action; }
-    const Clock::time_point getExecutionTimestamp() const { return execution_timestamp; }
+    const std::string& getName() const { return name_; }
+    const std::string& getDescription() const { return description_; }
+    UtilityScore getUtility() const { return utility_; }
+    const Action& getAction() const { return action_; }
+    const Clock::time_point getExecutionTimestamp() const { return execution_timestamp_; }
     const Clock::duration getTimeSinceExecution() const {
       return getTimeSinceExecution(std::chrono::steady_clock::now());
     }
     const Clock::duration getTimeSinceExecution(const Clock::time_point& timestamp) const {
-      return timestamp - execution_timestamp;
+      return timestamp - execution_timestamp_;
     }
     bool isNeverExecuted() const {
-      return execution_timestamp.time_since_epoch().count() == 0;
+      return execution_timestamp_.time_since_epoch().count() == 0;
     }
 
     /** Execute the Action associated with this Decision. */
     void execute() {
-      execution_timestamp = std::chrono::steady_clock::now();
-      action(*this);
+      execution_timestamp_ = std::chrono::steady_clock::now();
+      action_(*this);
     }
 
   private:
-    std::string name;
-    std::string description;
-    UtilityScore utility;
-    std::vector<Consideration> considerations;
-    Action action;
-    std::chrono::steady_clock::time_point execution_timestamp;
+    std::string name_;
+    std::string description_;
+    UtilityScore utility_;
+    std::vector<Consideration> considerations_;
+    Action action_;
+    std::chrono::steady_clock::time_point execution_timestamp_;
 };

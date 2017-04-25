@@ -14,6 +14,11 @@ inline float clip(float value, float min=0.f, float max=1.f) {
   return value > max ? max : value < min ? min : value;
 }
 
+/** Only used for labeling in DecisionEngine::addDecision */
+class range : public std::tuple<float, float> {
+  using std::tuple<float, float>::tuple;
+};
+
 /** An indication of the usefulness of a decision.
  *
  * A Consideration receives a signal from the utilityFunction.  This
@@ -27,11 +32,22 @@ class Consideration {
         Spline::SplineFunction spline,
         float min=1.f,
         float max=1.f)
-      : description(description),
-      utilityFunction(utilityFunction),
-      spline(spline),
-      min(min),
-      max(max)
+      : description_(description),
+      utilityFunction_(utilityFunction),
+      spline_(spline),
+      min_(min),
+      max_(max)
+    {}
+
+    Consideration(const std::string& description,
+        UtilityFunction utilityFunction,
+        Spline::SplineFunction spline,
+        range input_range)
+      : description_(description),
+      utilityFunction_(utilityFunction),
+      spline_(spline),
+      min_(std::get<0>(input_range)),
+      max_(std::get<1>(input_range))
     {}
 
     Consideration() = default;
@@ -41,13 +57,13 @@ class Consideration {
     /** Computes the utility score of this Consideration.  */
     inline float computeScore() const
     {
-      return clip(spline(scale(utilityFunction(), min, max)));
+      return clip(spline_(scale(utilityFunction_(), min_, max_)));
     }
 
   private:
-    std::string description;
-    UtilityFunction utilityFunction;
-    Spline::SplineFunction spline;
-    float min;
-    float max;
+    std::string description_;
+    UtilityFunction utilityFunction_;
+    Spline::SplineFunction spline_;
+    float min_;
+    float max_;
 };
